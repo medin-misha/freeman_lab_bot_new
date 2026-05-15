@@ -1,0 +1,1 @@
+"""Default diagnostic module package."""

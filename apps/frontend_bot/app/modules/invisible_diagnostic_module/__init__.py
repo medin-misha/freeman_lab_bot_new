@@ -1,0 +1,1 @@
+"""Invisible diagnostic module package."""
