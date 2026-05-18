@@ -9,6 +9,8 @@ class UserProfileBase(BaseModel):
     email: str | None = None
     timezone: str | None = None
     full_name: str | None = None
+    date_of_birth: datetime | None = None
+    city: str | None = None
     note: str | None = None
 
 
@@ -22,6 +24,8 @@ class UserProfilePatch(BaseModel):
     email: str | None = None
     timezone: str | None = None
     full_name: str | None = None
+    date_of_birth: datetime | None = None
+    city: str | None = None
     note: str | None = None
 
 

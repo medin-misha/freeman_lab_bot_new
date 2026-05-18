@@ -21,6 +21,33 @@ logger = logging.getLogger(__name__)
 
 class CRUD:
     @staticmethod
+    def _apply_equality_filter(
+        stmt,
+        model: Type[ModelT],
+        model_columns: dict[str, object],
+        field: str,
+        value: object,
+    ):
+        """Adds a typed equality filter for a concrete model field."""
+
+        column = model_columns.get(field)
+        if column is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Field '{field}' not found in {model.__name__}",
+            )
+
+        model_field = getattr(model, field)
+        if value is None:
+            return stmt.where(model_field.is_(None))
+
+        parsed_value = value
+        if isinstance(value, str) and not isinstance(column.type, String):
+            parsed_value = CRUD.parse_value(column, value)
+
+        return stmt.where(model_field == parsed_value)
+
+    @staticmethod
     async def _get_by_filters(
         model: Type[ModelT],
         session: AsyncSession,
@@ -28,9 +55,17 @@ class CRUD:
     ) -> ModelT | None:
         """Возвращает первую запись, удовлетворяющую набору equality-фильтров."""
 
-        stmt = select(model).where(
-            *[getattr(model, field) == value for field, value in filters.items()]
-        )
+        mapper: Mapper = inspect(model)
+        model_columns = {column.name: column for column in mapper.columns}
+        stmt = select(model)
+        for field, value in filters.items():
+            stmt = CRUD._apply_equality_filter(
+                stmt=stmt,
+                model=model,
+                model_columns=model_columns,
+                field=field,
+                value=value,
+            )
         result: Result = await session.execute(stmt)
         return result.scalars().first()
 
@@ -213,6 +248,7 @@ class CRUD:
         limit: int = 10,
         search: str | None = None,
         field: str | None = None,
+        filters: dict[str, object] | None = None,
     ) -> Union[ModelT, list[ModelT]]:
         """
         💡 Универсальный метод чтения данных из базы.
@@ -228,6 +264,7 @@ class CRUD:
             limit: лимит (опционально)
             search: поисковый запрос (опционально)
             fields: поля для поиска (опционально)
+            filters: equality-фильтры по полям модели (опционально)
 
         Returns:
             Один объект модели или список всех объектов.
@@ -241,6 +278,7 @@ class CRUD:
             limit = max(limit, 1)
             search = search.strip() if search else None
             field = field.strip() if field else None
+            filters = filters or {}
 
             if id is not None:
                 return await CRUD._get_by_id(model=model, session=session, id=id)
@@ -248,6 +286,15 @@ class CRUD:
             mapper: Mapper = inspect(model)
             model_columns = {column.name: column for column in mapper.columns}
             stmt = select(model)
+
+            for filter_field, filter_value in filters.items():
+                stmt = CRUD._apply_equality_filter(
+                    stmt=stmt,
+                    model=model,
+                    model_columns=model_columns,
+                    field=filter_field,
+                    value=filter_value,
+                )
 
             if search:
                 if field is not None:

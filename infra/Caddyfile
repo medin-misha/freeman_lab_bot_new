@@ -1,0 +1,14 @@
+{$CADDY_SITE_ADDRESS} {
+	encode zstd gzip
+
+	redir / /app/ 308
+	redir /app /app/ 308
+
+	reverse_proxy /api/* backend:8000
+
+	handle_path /app/* {
+		reverse_proxy core-mini-app:80
+	}
+
+	respond 404
+}

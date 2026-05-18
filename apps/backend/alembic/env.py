@@ -24,10 +24,13 @@ from app import Base
 from app.core import settings
 
 # Import all ORM models so they are registered in Base.metadata before autogenerate runs.
+from app.modules.analysis_module.models import AnalysisRegistration  # noqa: F401
 from app.modules.base_diagnostic_module.models import DiagnosticRun  # noqa: F401
+from app.modules.core_request_module.models import CoreRequest  # noqa: F401
 from app.modules.default_diagnostic_module.models import DefaultDiagnostic  # noqa: F401
 from app.modules.file_module.models import File  # noqa: F401
 from app.modules.invisible_diagnostic_module.models import InvisibleDiagnostic  # noqa: F401
+from app.modules.products_module.models import Product  # noqa: F401
 from app.modules.telegram_module.models import TelegramUser, UserProfile  # noqa: F401
 
 target_metadata = Base.metadata

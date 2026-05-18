@@ -19,6 +19,7 @@ from aiogram.types import FSInputFile, Message
 
 from app.modules.base_diagnostic_module import create_diagnostic_from_telegram_file
 from app.modules.menu_module.delivery import send_main_menu
+from app.modules.system.auth import login_required
 from .config import (
     DEFAULT_DIAGNOSTIC_BACK_BUTTON_TEXT,
     DEFAULT_DIAGNOSTIC_PREVIEW_FILE_PATH,
@@ -53,6 +54,7 @@ class _TelegramFilePayload:
 
 
 @router.message(F.text == DEFAULT_DIAGNOSTIC_TRIGGER_TEXT)
+@login_required
 async def send_default_diagnostic_preview(
     message: Message,
     state: FSMContext,
@@ -69,6 +71,7 @@ async def send_default_diagnostic_preview(
 
 
 @router.message(F.text == DEFAULT_DIAGNOSTIC_BACK_BUTTON_TEXT)
+@login_required
 async def back_to_main_menu(message: Message, state: FSMContext) -> None:
     """Сбрасывает сценарий диагностики и возвращает пользователя в главное меню."""
 
@@ -80,6 +83,7 @@ async def back_to_main_menu(message: Message, state: FSMContext) -> None:
     DefaultDiagnosticStates.waiting_for_file,
     F.document | F.audio | F.voice,
 )
+@login_required
 async def receive_default_diagnostic_media(
     message: Message,
     state: FSMContext,
@@ -119,6 +123,7 @@ async def receive_default_diagnostic_media(
 
 
 @router.message(DefaultDiagnosticStates.waiting_for_text, F.text)
+@login_required
 async def receive_default_diagnostic_text(
     message: Message,
     state: FSMContext,
@@ -152,6 +157,7 @@ async def receive_default_diagnostic_text(
 
 
 @router.message(DefaultDiagnosticStates.waiting_for_file)
+@login_required
 async def default_diagnostic_waiting_for_file_fallback(message: Message) -> None:
     """Подсказывает, что в текущем шаге бот ждёт медиафайл."""
 
@@ -162,6 +168,7 @@ async def default_diagnostic_waiting_for_file_fallback(message: Message) -> None
 
 
 @router.message(DefaultDiagnosticStates.waiting_for_text)
+@login_required
 async def default_diagnostic_waiting_for_text_fallback(message: Message) -> None:
     """Подсказывает, что после медиа без caption нужен отдельный текст."""
 

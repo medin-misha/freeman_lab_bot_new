@@ -90,8 +90,6 @@ def _build_create_payload(telegram_user: User) -> TelegramUserCreatePayload:
     return TelegramUserCreatePayload(
         telegram_id=telegram_user.id,
         username=telegram_user.username,
-        first_name=telegram_user.first_name,
-        last_name=telegram_user.last_name,
         last_seen_at=datetime.now(UTC),
         is_blocket_bot=telegram_user.is_bot,
         language_code=telegram_user.language_code,

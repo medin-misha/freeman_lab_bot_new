@@ -9,7 +9,9 @@ backend file и вызов product diagnostic endpoint.
 from __future__ import annotations
 
 import io
-from typing import TypeAlias, cast
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import AsyncIterator, BinaryIO, TypeAlias, cast
 
 from aiogram import Bot
 from aiogram.types import Audio, Document, Voice
@@ -78,17 +80,30 @@ async def _find_backend_user(chat_id: int) -> TelegramUserRead:
     )
 
 
-async def _download_telegram_file_bytes(
+@asynccontextmanager
+async def _open_telegram_file(
     *,
     bot: Bot,
     telegram_file_id: str,
     filename: str,
     content_type: str,
-) -> tuple[bytes, str, str]:
+) -> AsyncIterator[tuple[BinaryIO, str, str]]:
     telegram_file = await bot.get_file(telegram_file_id)
+    file_path = getattr(telegram_file, "file_path", None)
+    if isinstance(file_path, str):
+        local_path = Path(file_path)
+        if local_path.is_file():
+            with local_path.open("rb") as file_obj:
+                yield file_obj, filename, content_type
+                return
+
     buffer = io.BytesIO()
     await bot.download(telegram_file, destination=buffer)
-    return buffer.getvalue(), filename, content_type
+    buffer.seek(0)
+    try:
+        yield buffer, filename, content_type
+    finally:
+        buffer.close()
 
 
 def _extract_telegram_file_metadata(
@@ -117,7 +132,7 @@ def _extract_telegram_file_metadata(
 
 async def _create_backend_file(
     *,
-    file_bytes: bytes,
+    file_obj: BinaryIO,
     filename: str,
     content_type: str,
 ) -> FileRead:
@@ -126,7 +141,7 @@ async def _create_backend_file(
         path="/files/",
         file_field_name="file",
         filename=filename,
-        file_bytes=file_bytes,
+        file_obj=file_obj,
         content_type=content_type,
     )
     return FileRead.model_validate(payload)
@@ -197,19 +212,17 @@ async def create_diagnostic_from_telegram_file(
 
     try:
         telegram_user = await _find_backend_user(chat_id=chat_id)
-        file_bytes, normalized_filename, normalized_content_type = (
-            await _download_telegram_file_bytes(
-                bot=bot,
-                telegram_file_id=telegram_file_id,
-                filename=filename,
-                content_type=content_type,
+        async with _open_telegram_file(
+            bot=bot,
+            telegram_file_id=telegram_file_id,
+            filename=filename,
+            content_type=content_type,
+        ) as (file_obj, normalized_filename, normalized_content_type):
+            uploaded_file = await _create_backend_file(
+                file_obj=file_obj,
+                filename=normalized_filename,
+                content_type=normalized_content_type,
             )
-        )
-        uploaded_file = await _create_backend_file(
-            file_bytes=file_bytes,
-            filename=normalized_filename,
-            content_type=normalized_content_type,
-        )
         diagnostic = await _create_backend_diagnostic(
             user_id=telegram_user.id,
             voice_file_id=uploaded_file.id,

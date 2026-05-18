@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from aiogram import F, Router
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app.modules.menu_module.delivery import (
@@ -20,16 +21,22 @@ from app.modules.menu_module.delivery import (
 from app.modules.menu_module.keyboards import (
     BACK_TO_MENU_BUTTON_TEXT,
     DIAGNOSTICS_BUTTON_TEXT,
+    MORE_BUTTON_TEXT,
+    SOCIALS_BUTTON_TEXT,
     WHY_DIAGNOSTIC_BUTTON_TEXT,
+    get_more_menu_reply_keyboard,
+    get_socials_keyboard,
 )
 from app.modules.menu_module.messages import get_messages
 from app.modules.menu_module.service import SubscriptionCheckError, is_user_subscribed
+from app.modules.system.auth import login_required
 
 router = Router(name="menu_module")
 _MESSAGES = get_messages()
 
 
 @router.message(Command("start"))
+@login_required
 async def start_command(message: Message) -> None:
     """Показывает главное меню или сценарий обязательной подписки."""
 
@@ -50,13 +57,37 @@ async def start_command(message: Message) -> None:
 
 
 @router.message(F.text == DIAGNOSTICS_BUTTON_TEXT)
+@login_required
 async def diagnostic_menu(message: Message) -> None:
     """Показывает экран меню диагностики."""
 
     await send_diagnostic_menu(message)
 
 
+@router.message(F.text == MORE_BUTTON_TEXT)
+@login_required
+async def more_menu(message: Message) -> None:
+    """Показывает экран дополнительных возможностей проекта."""
+
+    await message.answer(
+        _MESSAGES["more_menu"],
+        reply_markup=get_more_menu_reply_keyboard(),
+    )
+
+
+@router.message(F.text == SOCIALS_BUTTON_TEXT)
+@login_required
+async def socials_menu(message: Message) -> None:
+    """Показывает ссылки на соцсети и площадки проекта."""
+
+    await message.answer(
+        _MESSAGES["socials_menu"],
+        reply_markup=get_socials_keyboard(),
+    )
+
+
 @router.message(F.text == WHY_DIAGNOSTIC_BUTTON_TEXT)
+@login_required
 async def explain_diagnostic_value(message: Message) -> None:
     """Повторно отправляет текст с объяснением пользы диагностики."""
 
@@ -64,13 +95,16 @@ async def explain_diagnostic_value(message: Message) -> None:
 
 
 @router.message(F.text == BACK_TO_MENU_BUTTON_TEXT)
-async def back_to_main_menu(message: Message) -> None:
+@login_required
+async def back_to_main_menu(message: Message, state: FSMContext) -> None:
     """Возвращает пользователя в главное меню."""
 
+    await state.clear()
     await send_main_menu(message)
 
 
 @router.callback_query(lambda callback: callback.data == "menu:check_subscription")
+@login_required
 async def check_subscription_callback(callback: CallbackQuery) -> None:
     """Повторно проверяет подписку после нажатия кнопки подтверждения."""
 

@@ -6,9 +6,11 @@ Lifecycle-хуки Telegram-приложения.
 подключений при остановке.
 """
 
+import asyncio
 import logging
 
 from aiogram import Bot, Dispatcher
+from aiogram.exceptions import TelegramNetworkError
 
 from app.core import MainSettings
 from app.modules.base_diagnostic_module import (
@@ -20,6 +22,27 @@ from app.modules.rmq_module.runtime import shutdown_rmq_runtime, startup_rmq_run
 from app.modules.system.runtime import shutdown_system_runtime, startup_system_runtime
 
 logger = logging.getLogger(__name__)
+_TELEGRAM_STARTUP_ATTEMPTS = 10
+_TELEGRAM_STARTUP_DELAY_SECONDS = 1.0
+
+
+async def _delete_webhook_with_retry(bot: Bot, *, drop_pending_updates: bool) -> None:
+    """Повторяет delete_webhook, если local Bot API ещё не успел подняться."""
+
+    for attempt in range(1, _TELEGRAM_STARTUP_ATTEMPTS + 1):
+        try:
+            await bot.delete_webhook(drop_pending_updates=drop_pending_updates)
+            return
+        except TelegramNetworkError:
+            if attempt == _TELEGRAM_STARTUP_ATTEMPTS:
+                raise
+            logger.warning(
+                "Telegram Bot API is not ready yet, retrying delete_webhook "
+                "(attempt %s/%s)",
+                attempt,
+                _TELEGRAM_STARTUP_ATTEMPTS,
+            )
+            await asyncio.sleep(_TELEGRAM_STARTUP_DELAY_SECONDS)
 
 
 def register_lifecycle(dispatcher: Dispatcher, settings: MainSettings) -> None:
@@ -28,7 +51,10 @@ def register_lifecycle(dispatcher: Dispatcher, settings: MainSettings) -> None:
     async def on_startup(bot: Bot) -> None:
         """Подготавливает Telegram и системный runtime к старту polling."""
 
-        await bot.delete_webhook(drop_pending_updates=settings.drop_pending_updates)
+        await _delete_webhook_with_retry(
+            bot,
+            drop_pending_updates=settings.drop_pending_updates,
+        )
         set_delivery_bot(bot)
         set_delivery_dispatcher(dispatcher)
         await startup_system_runtime(settings)

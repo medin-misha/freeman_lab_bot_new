@@ -57,8 +57,6 @@ def _build_backend_user(telegram_id: int) -> TelegramUserRead:
         "id": 42,
         "telegram_id": telegram_id,
         "username": "tester",
-        "first_name": "Test",
-        "last_name": "User",
         "last_seen_at": "2026-05-07T10:00:00Z",
         "is_blocket_bot": False,
         "language_code": "en",
@@ -144,8 +142,6 @@ class EnsureAuthenticatedTests(unittest.IsolatedAsyncioTestCase):
         telegram_user = SimpleNamespace(
             id=100,
             username="tester",
-            first_name="Test",
-            last_name="User",
             is_bot=False,
             language_code="en",
         )

@@ -50,6 +50,7 @@ async def auth_status_command(message: Message) -> None:
 
 
 @router.message(Command("usersysinfo"))
+@login_required
 async def user_system_info_command(message: Message) -> None:
     """Показывает техническую системную информацию, когда проект запущен в debug."""
 

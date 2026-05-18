@@ -23,16 +23,11 @@ ADMIN_DIAGNOSTIC_CREATED_QUEUE = "admin.diagnostic.created"
 
 
 def _build_user_label(payload: DiagnosticAdminNotificationPayload) -> str:
+    if payload.user.full_name and payload.user.full_name.strip():
+        return html.escape(payload.user.full_name.strip())
+
     if payload.user.username:
         return f"@{html.escape(payload.user.username)}"
-
-    full_name = " ".join(
-        part.strip()
-        for part in [payload.user.first_name or "", payload.user.last_name or ""]
-        if part and part.strip()
-    )
-    if full_name:
-        return html.escape(full_name)
     return "без username"
 
 

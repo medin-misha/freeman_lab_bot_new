@@ -24,6 +24,8 @@ class UserProfileRead(BaseModel):
     email: str | None = None
     timezone: str | None = None
     full_name: str | None = None
+    date_of_birth: datetime | None = None
+    city: str | None = None
     note: str | None = None
     created_at: datetime
     updated_at: datetime
@@ -40,8 +42,6 @@ class TelegramUserCreatePayload(BaseModel):
 
     telegram_id: int
     username: str | None = None
-    first_name: str | None = None
-    last_name: str | None = None
     last_seen_at: datetime | None = None
     is_blocket_bot: bool = False
     language_code: str | None = None
@@ -55,8 +55,6 @@ class TelegramUserRead(BaseModel):
     id: int
     telegram_id: int
     username: str | None = None
-    first_name: str | None = None
-    last_name: str | None = None
     last_seen_at: datetime | None = None
     is_blocket_bot: bool = False
     language_code: str | None = None

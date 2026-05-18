@@ -28,6 +28,10 @@ class MainSettings(BaseSettings):
     drop_pending_updates: bool = True
     debug: bool = Field(default=False, validation_alias=AliasChoices("DEBUG", "debug"))
     token: SecretStr = Field(validation_alias="TOKEN")
+    telegram_bot_api_url: str = Field(
+        default="https://api.telegram.org",
+        validation_alias="TELEGRAM_BOT_API_URL",
+    )
     backend_url: str | None = Field(default=None, validation_alias="BACKEND_URL")
     backend_api_prefix: str = Field(default="/api", validation_alias="BACKEND_API_PREFIX")
     backend_request_timeout: float = Field(

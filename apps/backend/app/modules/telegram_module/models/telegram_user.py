@@ -13,8 +13,6 @@ if TYPE_CHECKING:
 class TelegramUser(Base, TimestampMixin):
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
     username: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    first_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_blocket_bot: Mapped[bool] = mapped_column(default=False)
     language_code: Mapped[str | None] = mapped_column(String(16), nullable=True)

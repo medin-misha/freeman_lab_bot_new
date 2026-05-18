@@ -23,6 +23,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - freeman_lab_net
 
   rabbitmq:
     image: rabbitmq:4-management
@@ -42,6 +44,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - freeman_lab_net
 
   minio:
     image: minio/minio:latest
@@ -62,6 +66,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - freeman_lab_net
 
   minio-init:
     image: minio/mc:latest
@@ -84,6 +90,13 @@ services:
         done
         mc mb --ignore-existing "local/$$MINIO_BUCKET"
         mc anonymous set private "local/$$MINIO_BUCKET"
+    networks:
+      - freeman_lab_net
+
+networks:
+  freeman_lab_net:
+    name: freeman_lab_net
+    driver: bridge
 
 volumes:
   postgres_data:

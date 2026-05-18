@@ -1,13 +1,16 @@
 from fastapi import APIRouter
 
+from app.modules.analysis_module.handlers import router as analysis_router
 from app.modules.system.handlers import router as system_router
 from app.modules.rmq_module.handlers import router as rmq_router
 from app.modules.base_diagnostic_module.handlers import router as diagnostic_router
+from app.modules.core_request_module.handlers import router as core_request_router
 from app.modules.default_diagnostic_module.handlers import router as default_diagnostic_router
 from app.modules.file_module.handlers import router as file_router
 from app.modules.invisible_diagnostic_module.handlers import (
     router as invisible_diagnostic_router,
 )
+from app.modules.products_module.handlers import router as products_router
 from app.modules.telegram_module.handlers import router as telegram_router
 
 router = APIRouter(prefix="/api")
@@ -17,7 +20,10 @@ router.include_router(system_router)
 router.include_router(rmq_router)
 
 router.include_router(diagnostic_router)
+router.include_router(core_request_router)
 router.include_router(default_diagnostic_router)
 router.include_router(invisible_diagnostic_router)
 router.include_router(file_router)
+router.include_router(analysis_router)
+router.include_router(products_router)
 router.include_router(telegram_router)

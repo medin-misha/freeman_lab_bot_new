@@ -1,4 +1,3 @@
-import io
 import logging
 import mimetypes
 from typing import Annotated
@@ -50,12 +49,11 @@ async def download_file(
     session: SessionDep,
 ) -> StreamingResponse:
     file_record: File = await CRUD.get(model=File, session=session, id=id)
-    data = await s3_client.read(link=file_record.link)
 
     content_type, _ = mimetypes.guess_type(file_record.name)
     encoded_name = quote(file_record.name, safe="")
     return StreamingResponse(
-        io.BytesIO(data),
+        s3_client.iter_chunks(link=file_record.link),
         media_type=content_type or "application/octet-stream",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_name}"},
     )

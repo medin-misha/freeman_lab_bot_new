@@ -5,6 +5,9 @@ from __future__ import annotations
 import io
 import logging
 import re
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import AsyncIterator, BinaryIO
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -117,11 +120,28 @@ async def _edit_notification_message(
     )
 
 
-async def _download_document(document: Document) -> bytes:
+@asynccontextmanager
+async def _open_document(document: Document) -> AsyncIterator[tuple[BinaryIO, str, str]]:
     bot = get_notification_bot()
+    telegram_file = await bot.get_file(document.file_id)
+    file_path = getattr(telegram_file, "file_path", None)
+    filename = document.file_name or f"document_{document.file_unique_id}"
+    content_type = document.mime_type or "application/octet-stream"
+
+    if isinstance(file_path, str):
+        local_path = Path(file_path)
+        if local_path.is_file():
+            with local_path.open("rb") as file_obj:
+                yield file_obj, filename, content_type
+                return
+
     buffer = io.BytesIO()
     await bot.download(document, destination=buffer)
-    return buffer.getvalue()
+    buffer.seek(0)
+    try:
+        yield buffer, filename, content_type
+    finally:
+        buffer.close()
 
 
 def _is_transcript_sent(text: str | None) -> bool:
@@ -188,16 +208,14 @@ async def _upload_file_to_backend(
     diagnostic_run_id: int,
     note: str,
 ) -> int:
-    content = await _download_document(message.document)
     backend_client = get_diagnostic_admin_backend_client()
-    filename = message.document.file_name or f"diagnostic-{diagnostic_run_id}.bin"
-    content_type = message.document.mime_type or "application/octet-stream"
-    uploaded_file = await backend_client.upload_transcribation_file(
-        filename=filename,
-        content_type=content_type,
-        content=content,
-        note=note,
-    )
+    async with _open_document(message.document) as (file_obj, filename, content_type):
+        uploaded_file = await backend_client.upload_transcribation_file(
+            filename=filename,
+            content_type=content_type,
+            file_obj=file_obj,
+            note=note,
+        )
     return uploaded_file.id
 
 

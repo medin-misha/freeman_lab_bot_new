@@ -1,0 +1,137 @@
+name: freeman_lab_apps
+
+services:
+  telegram-bot-api:
+    image: aiogram/telegram-bot-api:latest
+    container_name: freeman_lab_telegram_bot_api
+    restart: unless-stopped
+    environment:
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID:-0}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH:-replace_me}
+      TELEGRAM_LOCAL: "1"
+    ports:
+      - "${TELEGRAM_BOT_API_PORT:-8081}:8081"
+    volumes:
+      - telegram_bot_api_data:/var/lib/telegram-bot-api
+    networks:
+      - freeman_lab_net
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: freeman_lab_backend
+    restart: unless-stopped
+    env_file:
+      - ./apps/backend/.env
+    environment:
+      database_url: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-fastapi_template}
+      amqp_url: amqp://${RABBITMQ_DEFAULT_USER:-app}:${RABBITMQ_DEFAULT_PASS:-app}@rabbitmq:5672/
+      minio_endpoint: minio:9000
+      minio_access_key: ${MINIO_ROOT_USER:-minioadmin}
+      minio_secret_key: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      minio_bucket: ${MINIO_BUCKET:-backend}
+      minio_secure: "false"
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      - telegram-bot-api
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/system/health', timeout=10)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - freeman_lab_net
+
+  core-mini-app:
+    build:
+      context: ./apps/core-mini-app
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${CORE_MINI_APP_API_URL:-/api}
+    container_name: freeman_lab_core_mini_app
+    restart: unless-stopped
+    networks:
+      - freeman_lab_net
+
+  frontend-bot:
+    build:
+      context: ./apps/frontend_bot
+      dockerfile: Dockerfile
+    container_name: freeman_lab_frontend_bot
+    restart: unless-stopped
+    env_file:
+      - ./apps/frontend_bot/.env
+    environment:
+      BACKEND_URL: http://backend:8000/
+      TELEGRAM_BOT_API_URL: http://telegram-bot-api:8081
+      AMQP_URL: amqp://${RABBITMQ_DEFAULT_USER:-app}:${RABBITMQ_DEFAULT_PASS:-app}@rabbitmq:5672/
+    depends_on:
+      backend:
+        condition: service_healthy
+      telegram-bot-api:
+        condition: service_started
+    volumes:
+      - telegram_bot_api_data:/var/lib/telegram-bot-api:ro
+    networks:
+      - freeman_lab_net
+
+  admin-bot:
+    build:
+      context: ./apps/admin_bot
+      dockerfile: Dockerfile
+    container_name: freeman_lab_admin_bot
+    restart: unless-stopped
+    env_file:
+      - ./apps/admin_bot/.env
+    environment:
+      BACKEND_URL: http://backend:8000/
+      TELEGRAM_BOT_API_URL: http://telegram-bot-api:8081
+      AMQP_URL: amqp://${RABBITMQ_DEFAULT_USER:-app}:${RABBITMQ_DEFAULT_PASS:-app}@rabbitmq:5672/
+    depends_on:
+      backend:
+        condition: service_healthy
+      telegram-bot-api:
+        condition: service_started
+    volumes:
+      - telegram_bot_api_data:/var/lib/telegram-bot-api:ro
+    networks:
+      - freeman_lab_net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: freeman_lab_caddy
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+      core-mini-app:
+        condition: service_started
+    environment:
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-localhost}
+    ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - freeman_lab_net
+
+networks:
+  freeman_lab_net:
+    external: true
+
+volumes:
+  telegram_bot_api_data:
+  caddy_data:
+  caddy_config:

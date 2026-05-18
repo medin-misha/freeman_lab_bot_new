@@ -117,6 +117,7 @@ async def _build_admin_notification_payload(
     run: DiagnosticRun,
 ) -> DiagnosticRunAdminNotificationPayload:
     user = await _get_user_or_404(session=session, user_id=run.user_id)
+    user_profile = user.user_profile
     voice_file: DiagnosticRunAdminNotificationFile | None = None
     if run.voice_file_id is not None:
         file_record = await _get_file_or_404(session=session, file_id=run.voice_file_id)
@@ -144,8 +145,9 @@ async def _build_admin_notification_payload(
         user=DiagnosticRunAdminNotificationUser(
             telegram_id=user.telegram_id,
             username=user.username,
-            first_name=user.first_name,
-            last_name=user.last_name,
+            full_name=user_profile.full_name if user_profile else None,
+            date_of_birth=user_profile.date_of_birth if user_profile else None,
+            city=user_profile.city if user_profile else None,
         ),
         voice_file=voice_file,
     )

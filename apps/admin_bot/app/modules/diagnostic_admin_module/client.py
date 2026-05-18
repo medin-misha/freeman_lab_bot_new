@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 import logging
-from typing import Any
+from typing import Any, BinaryIO
 
 from aiohttp import ClientError, ClientResponse, ClientSession, ClientTimeout, FormData
 
@@ -53,13 +53,13 @@ class DiagnosticAdminBackendClient:
         *,
         filename: str,
         content_type: str,
-        content: bytes,
+        file_obj: BinaryIO,
         note: str | None = None,
     ) -> BackendFileUploadResult:
         form = FormData()
         form.add_field(
             "file",
-            content,
+            file_obj,
             filename=filename,
             content_type=content_type,
         )

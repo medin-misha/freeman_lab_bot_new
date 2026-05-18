@@ -8,6 +8,8 @@
 from dataclasses import dataclass
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.telegram import TelegramAPIServer
 from aiogram.client.default import DefaultBotProperties
 
 from app.bot.dispatcher import create_dispatcher
@@ -27,7 +29,17 @@ def create_bot(app_settings: MainSettings) -> Bot:
     """Создает `aiogram.Bot` на основе общих настроек приложения."""
 
     default = DefaultBotProperties(parse_mode=app_settings.bot_parse_mode)
-    return Bot(token=app_settings.bot_token, default=default)
+    telegram_bot_api_url = app_settings.telegram_bot_api_url.strip().rstrip("/")
+    if not telegram_bot_api_url or telegram_bot_api_url == "https://api.telegram.org":
+        return Bot(token=app_settings.bot_token, default=default)
+
+    session = AiohttpSession(
+        api=TelegramAPIServer.from_base(
+            telegram_bot_api_url,
+            is_local=True,
+        )
+    )
+    return Bot(token=app_settings.bot_token, default=default, session=session)
 
 
 def create_application(app_settings: MainSettings = settings) -> TelegramApplication:

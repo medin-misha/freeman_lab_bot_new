@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import BinaryIO
 from typing import Any
 
 from aiohttp import ClientError, ClientResponse, ClientSession, ClientTimeout, FormData
@@ -120,7 +121,7 @@ class BackendClient:
         *,
         file_field_name: str,
         filename: str,
-        file_bytes: bytes,
+        file_obj: BinaryIO,
         content_type: str,
         fields: dict[str, str] | None = None,
     ) -> Any:
@@ -131,7 +132,7 @@ class BackendClient:
             form.add_field(key, value)
         form.add_field(
             file_field_name,
-            file_bytes,
+            file_obj,
             filename=filename,
             content_type=content_type,
         )

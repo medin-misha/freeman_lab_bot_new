@@ -44,8 +44,9 @@ class DiagnosticRunRead(BaseModel):
 class DiagnosticRunAdminNotificationUser(BaseModel):
     telegram_id: int
     username: str | None = None
-    first_name: str | None = None
-    last_name: str | None = None
+    full_name: str | None = None
+    date_of_birth: datetime | None = None
+    city: str | None = None
 
 
 class DiagnosticRunAdminNotificationFile(BaseModel):

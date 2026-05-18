@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import BinaryIO
+from typing import AsyncIterator, BinaryIO
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -64,6 +64,25 @@ class S3Client:
             )
             async with response["Body"] as stream:
                 return await stream.read()
+
+    async def iter_chunks(
+        self,
+        link: str,
+        *,
+        chunk_size: int = 1024 * 1024,
+    ) -> AsyncIterator[bytes]:
+        """Streams file contents from bucket in chunks."""
+
+        key = self._key_from_link(link)
+
+        async with self._client() as client:
+            response = await client.get_object(
+                Bucket=settings.minio_bucket,
+                Key=key,
+            )
+            async with response["Body"] as stream:
+                async for chunk in stream.content.iter_chunked(chunk_size):
+                    yield chunk
 
     async def delete(self, link: str) -> None:
         """Delete file from bucket by its stored link."""
