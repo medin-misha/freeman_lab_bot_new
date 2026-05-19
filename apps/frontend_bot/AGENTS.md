@@ -29,12 +29,16 @@ It acts as a Telegram transport layer that can be extended with additional modul
 
 ## Current Behavior
 
-At the moment the template includes one module:
+At the moment the bot relies on a few key modules:
 
 - `app/modules/system/handlers.py`
-  Provides `/start`, `/authstatus`, and `/usersysinfo`.
+  Provides `/authstatus` and `/usersysinfo`.
+- `app/modules/menu_module/handlers.py`
+  Owns `/start` onboarding and optional `/start <source>` capture.
+- `app/modules/stats_module/service.py`
+  Reports bot-driven stats such as onboarding source and methodology delivery.
 
-This module is also the mandatory infrastructure layer for future modules:
+The `system` module is also the mandatory infrastructure layer for future modules:
 
 - it owns the backend auth client
 - it keeps the in-memory auth cache
@@ -85,7 +89,7 @@ If a module needs backend user auth, prefer:
 Expected `.env` values:
 
 - `TOKEN` required
-- `BACKEND_URL` optional but required for protected handlers
+- `BACKEND_URL` optional (in Docker Compose it is injected via service `environment`)
 - `BACKEND_API_PREFIX` optional, defaults to `/api`
 - `BACKEND_REQUEST_TIMEOUT` optional
 - `AUTH_CACHE_MAX_SIZE` optional

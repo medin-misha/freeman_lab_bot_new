@@ -123,13 +123,11 @@ MINIO_BUCKET=backend
 
 ```env
 debug=true
-database_url=postgresql+asyncpg://postgres:postgres@localhost:5432/fastapi_template
 database_pool_size=5
 database_max_overflow=10
 database_pool_timeout=30
 database_pool_recycle=1800
 
-amqp_url=amqp://app:app@localhost:5672/
 rabbitmq_enabled=true
 rabbitmq_default_exchange=app.events
 rabbitmq_default_exchange_type=direct
@@ -140,19 +138,14 @@ rabbitmq_consumer_enabled=true
 rabbitmq_publish_timeout=5
 rabbitmq_reconnect_interval=5
 rabbitmq_debug_endpoints_enabled=false
-
-minio_endpoint=localhost:9000
-minio_access_key=minioadmin
-minio_secret_key=minioadmin
-minio_bucket=backend
-minio_secure=false
 ```
 
 Важно:
 
-- для Docker эти значения частично переопределяются из compose
-- `database_url`, `amqp_url`, `minio_endpoint` могут оставаться локальными для
-  ручного запуска вне Docker
+- для Docker `database_url`, `amqp_url`, `minio_*` задаются через `docker-compose.apps.yml`
+- в `apps/backend/.env` оставляйте только backend-специфичные runtime-настройки
+- каталог `apps/backend/alembic/versions` смонтирован в контейнер backend, поэтому
+  `init`-миграция и последующие файлы миграций должны храниться на хосте
 
 ### `apps/frontend_bot/.env`
 
@@ -160,23 +153,20 @@ minio_secure=false
 
 ```env
 TOKEN=your_frontend_bot_token
-TELEGRAM_BOT_API_URL=https://api.telegram.org
-BACKEND_URL=http://localhost:8000/
 BACKEND_API_PREFIX=/api
 BACKEND_REQUEST_TIMEOUT=10
 AUTH_CACHE_MAX_SIZE=1000
 BOT_PARSE_MODE=HTML
 CHANNEL=@your_channel
 CORE_URL=https://example.com/app/
-AMQP_URL=amqp://app:app@localhost:5672/
 ```
 
 Важно:
 
 - `CHANNEL` обязателен
 - `CORE_URL` обязателен и должен указывать на Telegram mini app Ядра
-- в Docker `BACKEND_URL`, `TELEGRAM_BOT_API_URL` и `AMQP_URL` переопределяются
-  из compose автоматически
+- в Docker `BACKEND_URL`, `TELEGRAM_BOT_API_URL` и `AMQP_URL` задаются
+  через `docker-compose.apps.yml`; не дублируйте их в сервисном `.env`
 - `TOKEN` должен быть реальным токеном именно пользовательского бота
 
 ### `apps/admin_bot/.env`
@@ -185,13 +175,10 @@ AMQP_URL=amqp://app:app@localhost:5672/
 
 ```env
 TOKEN=your_admin_bot_token
-TELEGRAM_BOT_API_URL=https://api.telegram.org
-BACKEND_URL=http://localhost:8000/
 BACKEND_API_PREFIX=/api
 BACKEND_REQUEST_TIMEOUT=10
 AUTH_CACHE_MAX_SIZE=1000
 BOT_PARSE_MODE=HTML
-AMQP_URL=amqp://app:app@localhost:5672/
 ADMINS_CHAT_IDS=123456789,987654321
 ```
 
@@ -199,8 +186,8 @@ ADMINS_CHAT_IDS=123456789,987654321
 
 - `ADMINS_CHAT_IDS` — список chat id через запятую
 - `TOKEN` должен быть токеном admin-бота
-- в Docker `BACKEND_URL`, `TELEGRAM_BOT_API_URL` и `AMQP_URL` тоже
-  переопределяются из compose
+- в Docker `BACKEND_URL`, `TELEGRAM_BOT_API_URL` и `AMQP_URL` задаются
+  через `docker-compose.apps.yml`; не дублируйте их в сервисном `.env`
 
 ## Порядок запуска
 

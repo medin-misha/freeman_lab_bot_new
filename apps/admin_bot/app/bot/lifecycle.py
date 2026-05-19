@@ -17,6 +17,10 @@ from app.modules.analysis_admin_module.runtime import (
     shutdown_analysis_admin_runtime,
     startup_analysis_admin_runtime,
 )
+from app.modules.core_admin_module.runtime import (
+    shutdown_core_admin_runtime,
+    startup_core_admin_runtime,
+)
 from app.modules.diagnostic_admin_module.runtime import (
     shutdown_diagnostic_admin_runtime,
     startup_diagnostic_admin_runtime,
@@ -64,6 +68,7 @@ def register_lifecycle(dispatcher: Dispatcher, settings: MainSettings) -> None:
         )
         await startup_system_runtime(settings)
         await startup_analysis_admin_runtime(bot)
+        await startup_core_admin_runtime(bot)
         await startup_diagnostic_admin_runtime(bot)
         await startup_product_runtime(bot)
         await startup_rmq_runtime(settings)
@@ -76,6 +81,7 @@ def register_lifecycle(dispatcher: Dispatcher, settings: MainSettings) -> None:
         await shutdown_rmq_runtime()
         await shutdown_product_runtime()
         await shutdown_diagnostic_admin_runtime()
+        await shutdown_core_admin_runtime()
         await shutdown_analysis_admin_runtime()
         await shutdown_system_runtime()
         await bot.session.close()

@@ -85,7 +85,7 @@ If a module needs backend user auth, prefer:
 Expected `.env` values:
 
 - `TOKEN` required
-- `BACKEND_URL` optional but required for protected handlers
+- `BACKEND_URL` optional (in Docker Compose it is injected via service `environment`)
 - `BACKEND_API_PREFIX` optional, defaults to `/api`
 - `BACKEND_REQUEST_TIMEOUT` optional
 - `AUTH_CACHE_MAX_SIZE` optional

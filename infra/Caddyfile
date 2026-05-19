@@ -1,14 +1,19 @@
-{$CADDY_SITE_ADDRESS} {
-	encode zstd gzip
+{
+    acme_ca https://acme.zerossl.com/v2/DV90
+    acme_eab {
+        key_id {$ZEROSSL_KID}
+        mac_key {$ZEROSSL_MAC_KEY}
+    }
+}
 
-	redir / /app/ 308
-	redir /app /app/ 308
+https://{$CADDY_SITE_ADDRESS} {
+    # API запросы → backend
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
 
-	reverse_proxy /api/* backend:8000
-
-	handle_path /app/* {
-		reverse_proxy core-mini-app:80
-	}
-
-	respond 404
+    # Всё остальное → фронтенд
+    handle {
+        reverse_proxy core-mini-app:80
+    }
 }

@@ -115,6 +115,22 @@ class BackendClient:
             json_payload=json_payload,
         )
 
+    async def patch_json(
+        self,
+        path: str,
+        *,
+        json_payload: dict[str, Any],
+        query_params: dict[str, Any] | None = None,
+    ) -> Any:
+        """Выполняет PATCH-запрос с JSON body и возвращает JSON payload backend."""
+
+        return await self._request(
+            method="PATCH",
+            path=path,
+            json_payload=json_payload,
+            query_params=query_params,
+        )
+
     async def post_multipart(
         self,
         path: str,

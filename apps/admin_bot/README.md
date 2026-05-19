@@ -144,7 +144,7 @@ telegram_template/
 
 - `TOKEN` — обязательный токен Telegram-бота
 - `drop_pending_updates` — управляет тем, очищать ли накопленные Telegram-updates при старте; по умолчанию `True`
-- `BACKEND_URL` — адрес backend-сервиса
+- `BACKEND_URL` — адрес backend-сервиса (в Docker Compose задаётся через `environment`)
 - `BACKEND_API_PREFIX` — API-prefix backend, по умолчанию `/api`
 - `BACKEND_REQUEST_TIMEOUT` — таймаут HTTP-запросов к backend
 - `AUTH_CACHE_MAX_SIZE` — максимальный размер in-memory auth cache
@@ -372,7 +372,6 @@ def register_routers(dispatcher):
 
 ```env
 TOKEN="your-telegram-bot-token"
-BACKEND_URL="http://localhost:8000/"
 BOT_PARSE_MODE="HTML"
 ```
 
@@ -382,7 +381,6 @@ BOT_PARSE_MODE="HTML"
 
 ### Что опционально
 
-- `BACKEND_URL`
 - `BOT_PARSE_MODE`
 
 ## Запуск проекта

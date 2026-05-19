@@ -8,8 +8,10 @@
 
 from __future__ import annotations
 
+import logging
+
 from aiogram import F, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
@@ -29,15 +31,24 @@ from app.modules.menu_module.keyboards import (
 )
 from app.modules.menu_module.messages import get_messages
 from app.modules.menu_module.service import SubscriptionCheckError, is_user_subscribed
+from app.modules.stats_module import (
+    StatsModuleError,
+    mark_current_user_channel_subscribed,
+    set_current_user_source,
+)
 from app.modules.system.auth import login_required
 
 router = Router(name="menu_module")
 _MESSAGES = get_messages()
+logger = logging.getLogger(__name__)
 
 
 @router.message(Command("start"))
 @login_required
-async def start_command(message: Message) -> None:
+async def start_command(
+    message: Message,
+    command: CommandObject | None = None,
+) -> None:
     """Показывает главное меню или сценарий обязательной подписки."""
 
     user = message.from_user
@@ -45,8 +56,20 @@ async def start_command(message: Message) -> None:
         await message.answer(_MESSAGES["subscription_check_failed"])
         return
 
+    source = _extract_start_source(command)
+    if source is not None:
+        try:
+            await set_current_user_source(source)
+        except StatsModuleError:
+            logger.exception(
+                "Failed to report start source '%s' for chat_id=%s",
+                source,
+                message.chat.id,
+            )
+
     try:
         if await is_user_subscribed(message.bot, user.id):
+            await _report_channel_subscription(chat_id=message.chat.id)
             await send_main_menu(message)
             return
     except (SubscriptionCheckError, ValueError):
@@ -116,6 +139,8 @@ async def check_subscription_callback(callback: CallbackQuery) -> None:
     try:
         if await is_user_subscribed(callback.bot, user.id):
             await callback.answer()
+            chat_id = callback.message.chat.id if callback.message is not None else user.id
+            await _report_channel_subscription(chat_id=chat_id)
             await send_main_menu(callback)
             return
     except (SubscriptionCheckError, ValueError):
@@ -123,3 +148,28 @@ async def check_subscription_callback(callback: CallbackQuery) -> None:
         return
 
     await callback.answer(_MESSAGES["subscription_still_missing"], show_alert=True)
+
+
+def _extract_start_source(command: CommandObject | None) -> str | None:
+    """Извлекает source из `/start <payload>` и нормализует пустые значения."""
+
+    if command is None or command.args is None:
+        return None
+
+    source = command.args.strip()
+    if not source:
+        return None
+
+    return source
+
+
+async def _report_channel_subscription(*, chat_id: int) -> None:
+    """Отправляет на backend флаг подтверждённой подписки без влияния на UX."""
+
+    try:
+        await mark_current_user_channel_subscribed()
+    except StatsModuleError:
+        logger.exception(
+            "Failed to report channel subscription for chat_id=%s",
+            chat_id,
+        )

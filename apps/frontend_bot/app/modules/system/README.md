@@ -4,7 +4,7 @@
 
 It provides the base services that every future Telegram module can rely on:
 
-- system-level commands such as `/start`, `/authstatus`, `/usersysinfo`
+- system-level commands such as `/authstatus` and `/usersysinfo`
 - a dedicated config layer built from the shared app config
 - an `aiohttp` backend client for `fastapi_template`
 - in-memory authentication cache
@@ -64,12 +64,13 @@ The flow is:
 
 ## Commands
 
-- `/start`
-  Shows available system commands and backend presence.
 - `/authstatus`
   Protected command. Triggers auth flow if needed and prints cached auth state.
 - `/usersysinfo`
   Debug-only command. Works only when the app runs with `debug=True`.
+
+`/start` onboarding belongs to `menu_module`, which also handles optional
+`/start <source>` payload reporting through `stats_module`.
 
 ## How To Use `login_required`
 

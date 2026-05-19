@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.stats_module.services.user_bot_stats_service import UserBotStatsService
 from app.modules.system import CRUD
 from app.modules.system.services.errors import DBErrorHandler
 
@@ -13,6 +14,30 @@ from ..schemas import TelegramUserCreate, UserProfileCreate
 
 
 logger = logging.getLogger(__name__)
+
+
+async def _create_related_records(
+    session: AsyncSession,
+    telegram_users: list[TelegramUser],
+) -> None:
+    telegram_user_ids = [telegram_user.id for telegram_user in telegram_users]
+    user_bot_stats_service = UserBotStatsService(session)
+    if len(telegram_user_ids) == 1:
+        await user_bot_stats_service.create_for_telegram_user(
+            telegram_user_id=telegram_user_ids[0],
+        )
+    else:
+        await user_bot_stats_service.bulk_create_for_telegram_users(
+            telegram_user_ids=telegram_user_ids,
+        )
+    await CRUD.bulk_create(
+        data=[
+            UserProfileCreate(telegram_user_id=telegram_user_id)
+            for telegram_user_id in telegram_user_ids
+        ],
+        model=UserProfile,
+        session=session,
+    )
 
 
 async def _delete_telegram_users_by_ids(
@@ -30,7 +55,7 @@ async def _delete_telegram_users_by_ids(
     except Exception:
         await session.rollback()
         logger.exception(
-            "Failed to clean up TelegramUser records after UserProfile creation error.",
+            "Failed to clean up TelegramUser records after related record creation error.",
             extra={"telegram_user_ids": user_ids},
         )
 
@@ -50,11 +75,7 @@ async def create_telegram_user(
         return telegram_user, False
 
     try:
-        await CRUD.create(
-            data=UserProfileCreate(telegram_user_id=telegram_user.id),
-            model=UserProfile,
-            session=session,
-        )
+        await _create_related_records(session=session, telegram_users=[telegram_user])
     except HTTPException:
         await _delete_telegram_users_by_ids(session=session, user_ids=[telegram_user.id])
         raise
@@ -73,14 +94,7 @@ async def bulk_create_telegram_users(
     )
 
     try:
-        await CRUD.bulk_create(
-            data=[
-                UserProfileCreate(telegram_user_id=telegram_user.id)
-                for telegram_user in telegram_users
-            ],
-            model=UserProfile,
-            session=session,
-        )
+        await _create_related_records(session=session, telegram_users=telegram_users)
     except HTTPException:
         await _delete_telegram_users_by_ids(
             session=session,

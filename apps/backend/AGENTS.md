@@ -219,6 +219,12 @@ Run Alembic migration:
 uv run alembic upgrade head
 ```
 
+Docker note:
+
+- In container startup, migrations are handled by `docker-entrypoint.sh`.
+- If `alembic/versions` has no migration files, entrypoint generates an `init` revision via autogenerate, then runs `upgrade head`.
+- Retry behavior is controlled by `MIGRATION_MAX_ATTEMPTS` and `MIGRATION_RETRY_SLEEP_SECONDS`.
+
 Create Alembic revision:
 
 ```bash

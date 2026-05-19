@@ -31,6 +31,7 @@ from app.modules.default_diagnostic_module.models import DefaultDiagnostic  # no
 from app.modules.file_module.models import File  # noqa: F401
 from app.modules.invisible_diagnostic_module.models import InvisibleDiagnostic  # noqa: F401
 from app.modules.products_module.models import Product  # noqa: F401
+from app.modules.stats_module.models import UserBotStats, UserDiagnosticStats  # noqa: F401
 from app.modules.telegram_module.models import TelegramUser, UserProfile  # noqa: F401
 
 target_metadata = Base.metadata

@@ -1,10 +1,15 @@
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from aiogram.enums import ChatMemberStatus
 from aiogram.exceptions import TelegramAPIError
 
+from app.modules.menu_module.handlers import (
+    _extract_start_source,
+    check_subscription_callback,
+    start_command,
+)
 from app.modules.menu_module.config import menu_settings
 from app.modules.menu_module.service.subscription import (
     SubscriptionCheckError,
@@ -13,6 +18,7 @@ from app.modules.menu_module.service.subscription import (
     is_user_subscribed,
     normalize_channel_reference,
 )
+from app.modules.stats_module import StatsModuleError
 
 
 class SubscriptionHelpersTests(unittest.TestCase):
@@ -81,3 +87,164 @@ class SubscriptionServiceTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(menu_settings, "channel", "https://t.me/+secretinvite"):
             with self.assertRaises(SubscriptionCheckError):
                 await is_user_subscribed(bot, user_id=1)
+
+
+class StartSourceHelpersTests(unittest.TestCase):
+    def test_extract_start_source_returns_trimmed_payload(self) -> None:
+        command = SimpleNamespace(args="  instagram  ")
+
+        self.assertEqual(_extract_start_source(command), "instagram")
+
+    def test_extract_start_source_returns_none_for_missing_payload(self) -> None:
+        self.assertIsNone(_extract_start_source(None))
+        self.assertIsNone(_extract_start_source(SimpleNamespace(args=None)))
+        self.assertIsNone(_extract_start_source(SimpleNamespace(args="   ")))
+
+
+class StartCommandTests(unittest.IsolatedAsyncioTestCase):
+    async def test_start_command_reports_source_and_preserves_existing_flow(self) -> None:
+        message = SimpleNamespace(
+            from_user=SimpleNamespace(id=1),
+            bot=object(),
+            chat=SimpleNamespace(id=100),
+            answer=unittest.mock.AsyncMock(),
+        )
+
+        with patch(
+            "app.modules.menu_module.handlers.set_current_user_source",
+            new=unittest.mock.AsyncMock(),
+        ) as set_source, patch(
+            "app.modules.menu_module.handlers.is_user_subscribed",
+            new=unittest.mock.AsyncMock(return_value=True),
+        ), patch(
+            "app.modules.menu_module.handlers.send_main_menu",
+            new=unittest.mock.AsyncMock(),
+        ) as send_main_menu:
+            await start_command.__wrapped__(
+                message,
+                command=SimpleNamespace(args="ads_campaign"),
+            )
+
+        set_source.assert_awaited_once_with("ads_campaign")
+        send_main_menu.assert_awaited_once_with(message)
+
+    async def test_start_command_reports_channel_subscription_for_subscribed_user(self) -> None:
+        message = SimpleNamespace(
+            from_user=SimpleNamespace(id=1),
+            bot=object(),
+            chat=SimpleNamespace(id=100),
+            answer=AsyncMock(),
+        )
+
+        with patch(
+            "app.modules.menu_module.handlers.mark_current_user_channel_subscribed",
+            new=AsyncMock(),
+        ) as mark_channel_subscribed, patch(
+            "app.modules.menu_module.handlers.is_user_subscribed",
+            new=AsyncMock(return_value=True),
+        ), patch(
+            "app.modules.menu_module.handlers.send_main_menu",
+            new=AsyncMock(),
+        ) as send_main_menu:
+            await start_command.__wrapped__(message, command=None)
+
+        mark_channel_subscribed.assert_awaited_once_with()
+        send_main_menu.assert_awaited_once_with(message)
+
+    async def test_start_command_suppresses_channel_subscription_stats_error(self) -> None:
+        message = SimpleNamespace(
+            from_user=SimpleNamespace(id=1),
+            bot=object(),
+            chat=SimpleNamespace(id=100),
+            answer=AsyncMock(),
+        )
+
+        with patch(
+            "app.modules.menu_module.handlers.mark_current_user_channel_subscribed",
+            new=AsyncMock(side_effect=StatsModuleError("boom")),
+        ), patch(
+            "app.modules.menu_module.handlers.is_user_subscribed",
+            new=AsyncMock(return_value=True),
+        ), patch(
+            "app.modules.menu_module.handlers.send_main_menu",
+            new=AsyncMock(),
+        ) as send_main_menu:
+            await start_command.__wrapped__(message, command=None)
+
+        send_main_menu.assert_awaited_once_with(message)
+
+    async def test_start_command_suppresses_source_stats_error(self) -> None:
+        message = SimpleNamespace(
+            from_user=SimpleNamespace(id=1),
+            bot=object(),
+            chat=SimpleNamespace(id=100),
+            answer=unittest.mock.AsyncMock(),
+        )
+
+        with patch(
+            "app.modules.menu_module.handlers.set_current_user_source",
+            new=unittest.mock.AsyncMock(side_effect=StatsModuleError("boom")),
+        ), patch(
+            "app.modules.menu_module.handlers.is_user_subscribed",
+            new=unittest.mock.AsyncMock(return_value=False),
+        ), patch(
+            "app.modules.menu_module.handlers.send_subscription_prompt",
+            new=unittest.mock.AsyncMock(),
+        ) as send_subscription_prompt:
+            await start_command.__wrapped__(
+                message,
+                command=SimpleNamespace(args="ads_campaign"),
+            )
+
+        send_subscription_prompt.assert_awaited_once_with(message)
+
+
+class CheckSubscriptionCallbackTests(unittest.IsolatedAsyncioTestCase):
+    async def test_callback_reports_channel_subscription_for_subscribed_user(self) -> None:
+        callback = SimpleNamespace(
+            from_user=SimpleNamespace(id=1),
+            bot=object(),
+            data="menu:check_subscription",
+            message=SimpleNamespace(chat=SimpleNamespace(id=100)),
+            answer=AsyncMock(),
+        )
+
+        with patch(
+            "app.modules.menu_module.handlers.mark_current_user_channel_subscribed",
+            new=AsyncMock(),
+        ) as mark_channel_subscribed, patch(
+            "app.modules.menu_module.handlers.is_user_subscribed",
+            new=AsyncMock(return_value=True),
+        ), patch(
+            "app.modules.menu_module.handlers.send_main_menu",
+            new=AsyncMock(),
+        ) as send_main_menu:
+            await check_subscription_callback.__wrapped__(callback)
+
+        callback.answer.assert_awaited_once_with()
+        mark_channel_subscribed.assert_awaited_once_with()
+        send_main_menu.assert_awaited_once_with(callback)
+
+    async def test_callback_suppresses_channel_subscription_stats_error(self) -> None:
+        callback = SimpleNamespace(
+            from_user=SimpleNamespace(id=1),
+            bot=object(),
+            data="menu:check_subscription",
+            message=SimpleNamespace(chat=SimpleNamespace(id=100)),
+            answer=AsyncMock(),
+        )
+
+        with patch(
+            "app.modules.menu_module.handlers.mark_current_user_channel_subscribed",
+            new=AsyncMock(side_effect=StatsModuleError("boom")),
+        ), patch(
+            "app.modules.menu_module.handlers.is_user_subscribed",
+            new=AsyncMock(return_value=True),
+        ), patch(
+            "app.modules.menu_module.handlers.send_main_menu",
+            new=AsyncMock(),
+        ) as send_main_menu:
+            await check_subscription_callback.__wrapped__(callback)
+
+        callback.answer.assert_awaited_once_with()
+        send_main_menu.assert_awaited_once_with(callback)

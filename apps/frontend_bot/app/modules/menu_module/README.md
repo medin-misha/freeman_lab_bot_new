@@ -7,10 +7,13 @@
 
 The module:
 
-- handles `/start`
+- handles `/start` and `/start <source>`
 - checks whether a user is subscribed to the required Telegram channel
 - shows the subscription prompt with inline buttons
 - routes subscribed users into the main menu
+- reports onboarding `source` payload into backend stats when present
+- reports confirmed channel subscription into backend stats as
+  `UserBotStats.channel_subscribe=true`
 
 ## Configuration
 
@@ -24,19 +27,25 @@ Recommended values:
 
 ## Flow
 
-1. The user sends `/start`.
-2. The module checks the subscription with `bot.get_chat_member(...)`.
-3. If the user is subscribed, the bot sends the main menu message.
-4. If not, the bot sends a subscription prompt with:
+1. The user sends `/start` or `/start <source>`.
+2. If a start payload is present, the module trims it and reports it into
+   `UserBotStats.source` through `stats_module`.
+3. The module checks the subscription with `bot.get_chat_member(...)`.
+4. If the user is subscribed, the module reports
+   `UserBotStats.channel_subscribe=true` through `stats_module`.
+5. The bot sends the main menu message.
+6. If not, the bot sends a subscription prompt with:
    - `Подписаться`
    - `Я подписался(ась)`
 
-The confirmation button triggers a callback that repeats the same check.
+The confirmation button triggers a callback that repeats the same check and,
+after a successful result, also reports `channel_subscribe=true`.
 
 ## File Map
 
 - `handlers.py`
-  Owns the `/start` flow and confirmation callback.
+  Owns the `/start` flow, source extraction, subscription stats reporting, and
+  confirmation callback.
 - `config.py`
   Menu-specific config projection from the shared app settings.
 - `messages.py` and `messages.json`
@@ -52,8 +61,12 @@ The confirmation button triggers a callback that repeats the same check.
 
 ## Notes
 
-- The module intentionally does not depend on backend auth.
+- The module depends on backend auth through `@login_required`.
+- `/start <source>` uses raw `CommandObject.args`, trims whitespace, and ignores
+  empty payloads.
+- Source reporting is auxiliary; stats failures must not break onboarding UX.
+- Channel subscription reporting is also auxiliary; stats failures must not
+  block access to the main menu after a successful subscription check.
 - The exported service function is the source of truth for subscription checks.
 - The decorator exists for future handlers that should also be gated by channel
   subscription.
-

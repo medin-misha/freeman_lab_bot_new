@@ -10,6 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.file_module import File
 from app.modules.rmq_module import rmq_publisher
+from app.modules.stats_module.services.user_diagnostic_stats_service import (
+    UserDiagnosticStatsService,
+)
 from app.modules.system.services.errors import DBErrorHandler
 from app.modules.telegram_module import TelegramUser
 
@@ -228,6 +231,12 @@ async def create_run(
             tag=data.tag,
         )
         session.add(run)
+        await session.flush()
+        await UserDiagnosticStatsService(session).ensure_for_user_and_diagnostic(
+            telegram_user_id=run.user_id,
+            diagnostic_code=run.diagnostic_code,
+            flush=False,
+        )
         await session.commit()
         await session.refresh(run)
     except HTTPException:

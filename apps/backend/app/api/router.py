@@ -11,6 +11,7 @@ from app.modules.invisible_diagnostic_module.handlers import (
     router as invisible_diagnostic_router,
 )
 from app.modules.products_module.handlers import router as products_router
+from app.modules.stats_module.handlers import router as stats_router
 from app.modules.telegram_module.handlers import router as telegram_router
 
 router = APIRouter(prefix="/api")
@@ -27,3 +28,4 @@ router.include_router(file_router)
 router.include_router(analysis_router)
 router.include_router(products_router)
 router.include_router(telegram_router)
+router.include_router(stats_router)

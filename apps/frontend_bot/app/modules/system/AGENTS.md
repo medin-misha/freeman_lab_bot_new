@@ -10,7 +10,7 @@ introspection.
 
 - auth orchestration against the backend Telegram API
 - process-level in-memory auth cache
-- shared system commands
+- shared system commands such as `/authstatus` and `/usersysinfo`
 - module-specific config derived from the shared app config
 - transport code for backend API calls
 - current-update auth context helpers
@@ -18,6 +18,7 @@ introspection.
 ## What Does Not Belong Here
 
 - product or domain business logic
+- onboarding `/start` UX or `/start <source>` handling
 - module-specific user journeys unrelated to platform/auth
 - persistent storage owned by the bot
 - direct imports from `fastapi_template` runtime code

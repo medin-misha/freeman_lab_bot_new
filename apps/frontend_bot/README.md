@@ -27,13 +27,19 @@
 
 Сейчас в шаблоне подключены три модуля с разной ролью:
 
+- `menu_module` — пользовательский onboarding-модуль с `/start`
 - `system` — обязательный системный infrastructure layer
+- `stats_module` — frontend-слой отправки пользовательской статистики в backend
 - `rmq_module` — общий RabbitMQ transport-layer
 - `test_rmq_module` — демонстрационный модуль для проверки RMQ wiring
 
-Системный модуль предоставляет базовые команды:
+`menu_module` владеет пользовательской точкой входа:
 
-- `/start` — проверка, что бот запущен
+- `/start` — onboarding-поток с проверкой подписки
+- `/start <source>` — тот же onboarding-поток, но с отправкой `source` в backend-статистику
+
+Системный модуль предоставляет инфраструктурные команды:
+
 - `/authstatus` — базовая проверка auth-сессии через backend
 - `/usersysinfo` — техническая информация о пользователе и runtime в debug-режиме
 
@@ -144,7 +150,7 @@ telegram_template/
 
 - `TOKEN` — обязательный токен Telegram-бота
 - `drop_pending_updates` — управляет тем, очищать ли накопленные Telegram-updates при старте; по умолчанию `True`
-- `BACKEND_URL` — адрес backend-сервиса
+- `BACKEND_URL` — адрес backend-сервиса (в Docker Compose задаётся через `environment`)
 - `BACKEND_API_PREFIX` — API-prefix backend, по умолчанию `/api`
 - `BACKEND_REQUEST_TIMEOUT` — таймаут HTTP-запросов к backend
 - `AUTH_CACHE_MAX_SIZE` — максимальный размер in-memory auth cache
@@ -204,11 +210,12 @@ telegram_template/
 
 Единая точка подключения модулей.
 
-Сейчас там явная регистрация:
+Сейчас там явная регистрация модулей, включая:
 
-- импортируется `system_router`
-- импортируется пустой инфраструктурный `rmq_router`
-- импортируется `test_rmq_router` для demo-команды `/rmqping`
+- `system_router`
+- `menu_router`
+- инфраструктурный `rmq_router`
+- продуктовые и сервисные роутеры
 - каждый роутер подключается через `dispatcher.include_router(...)`
 
 Это сделано намеренно.
@@ -261,10 +268,21 @@ telegram_template/
 
 - создаётся `router = Router(name="system")`
 - описываются хендлеры
-- команды `/start`, `/authstatus` и `/usersysinfo` обрабатываются именно этим роутером
+- команды `/authstatus` и `/usersysinfo` обрабатываются именно этим роутером
 
 Смысл файла:
 показать минимальный канонический пример модульного `handlers.py`.
+
+### `app/modules/menu_module/handlers.py`
+
+Пользовательская onboarding-точка входа.
+
+Внутри него:
+
+- обрабатывается `/start`
+- извлекается optional payload из `/start <source>`
+- `source` отправляется в `stats_module`, если payload не пустой
+- после этого идёт обычная проверка подписки и показ нужного экрана
 
 ### `app/modules/system/auth/*`
 
@@ -372,7 +390,6 @@ def register_routers(dispatcher):
 
 ```env
 TOKEN="your-telegram-bot-token"
-BACKEND_URL="http://localhost:8000/"
 BOT_PARSE_MODE="HTML"
 ```
 
@@ -382,7 +399,6 @@ BOT_PARSE_MODE="HTML"
 
 ### Что опционально
 
-- `BACKEND_URL`
 - `BOT_PARSE_MODE`
 
 ## Запуск проекта

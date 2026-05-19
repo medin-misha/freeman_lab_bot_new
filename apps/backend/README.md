@@ -44,7 +44,6 @@
 Следующие части пока либо представлены как заглушки, либо сознательно не реализованы:
 
 - [app/core/security.py](/home/misha/code/module_service/fastapi_template/app/core/security.py:1) пустой;
-- [Dockerfile](/home/misha/code/module_service/fastapi_template/Dockerfile:1) пустой;
 - отдельного тестового сетапа пока нет.
 
 Если тебе нужны auth, контейнеризация или тесты, готовые для CI, это следующий слой, который нужно добавить поверх шаблона.
@@ -101,7 +100,6 @@ module_name/
 
 ```env
 debug=true
-database_url=postgresql+asyncpg://postgres:postgres@localhost:5432/fastapi_template
 database_pool_size=5
 database_max_overflow=10
 database_pool_timeout=30
@@ -112,16 +110,16 @@ database_pool_recycle=1800
 
 - `project_name`: заголовок приложения в FastAPI; необязательная, по умолчанию `"Fast API Template"`.
 - `debug`: включает более подробные ошибки в некоторых инфраструктурных handlers.
-- `database_url`: async SQLAlchemy URL, обязательная.
+- `database_url`: async SQLAlchemy URL, обязательная (в Docker Compose задаётся через `environment`).
 - `database_pool_size`: базовый размер пула соединений.
 - `database_max_overflow`: сколько дополнительных временных соединений можно открыть сверх базового пула.
 - `database_pool_timeout`: сколько секунд ждать свободное соединение.
 - `database_pool_recycle`: через сколько секунд переоткрывать соединения из пула.
 - `rabbitmq_enabled`: включает встроенный `rmq_module` как часть приложения.
-- `amqp_url`: URL подключения к RabbitMQ; может быть пустым, если `rmq_module` не используется.
+- `amqp_url`: URL подключения к RabbitMQ; может быть пустым, если `rmq_module` не используется (в Docker Compose задаётся через `environment`).
 - `rabbitmq_consumer_enabled`: разрешает startup фоновых consumer-listener'ов.
 - `rabbitmq_debug_endpoints_enabled`: открывает debug endpoints `POST /api/rmq/publish` и `POST /api/rmq/consume`.
-- `minio_*`: настройки для отдельного файлового модуля, если он подключён поверх шаблона.
+- `minio_*`: настройки для отдельного файлового модуля, если он подключён поверх шаблона (в Docker Compose задаются через `environment`).
 
 В качестве базового шаблона используй [.env.example](/home/misha/code/module_service/fastapi_template/.env.example:1).
 
@@ -173,6 +171,14 @@ RabbitMQ router реализован в [app/modules/rmq_module/handlers.py](/ho
 ## Миграции
 
 Alembic настроен для async SQLAlchemy в [alembic/env.py](/home/misha/code/module_service/fastapi_template/alembic/env.py:1).
+
+В Docker backend использует [docker-entrypoint.sh](/home/medynskyi/freeman_lab_bot_new/apps/backend/docker-entrypoint.sh), который:
+
+- при пустой папке `alembic/versions` автоматически создаёт `init`-миграцию через autogenerate;
+- затем выполняет `uv run alembic upgrade head`;
+- использует миграции из `alembic/versions`, смонтированных с хоста;
+- если в базе осталась ссылка на удалённую ревизию, выполняет `alembic stamp head`, затем `upgrade head`;
+- при недоступной БД повторяет попытки по `MIGRATION_MAX_ATTEMPTS` и `MIGRATION_RETRY_SLEEP_SECONDS`.
 
 Применить все миграции:
 
