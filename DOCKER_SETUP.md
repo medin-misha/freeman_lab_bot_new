@@ -16,6 +16,9 @@
 - `rabbitmq`
 - `minio`
 - `minio-init`
+- `loki` — агрегация логов
+- `promtail` — сборщик логов контейнеров
+- `grafana` — UI для просмотра логов
 
 Приложения поднимают:
 
@@ -64,6 +67,9 @@
 - `MINIO_BUCKET`
 - `MINIO_PORT`
 - `MINIO_CONSOLE_PORT`
+- `GRAFANA_PORT`
+- `GRAFANA_ADMIN_USER`
+- `GRAFANA_ADMIN_PASSWORD`
 
 Шаблон:
 
@@ -252,6 +258,15 @@ RabbitMQ management:
 ```text
 http://localhost:15672
 ```
+
+Grafana (логи всех контейнеров):
+
+```text
+http://localhost:3000
+```
+
+Логин/пароль из `.env` — `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` (по умолчанию `admin` / `changeme`).
+Источник данных Loki подключается автоматически. Просматривайте логи через **Explore → Loki**.
 
 Local Telegram Bot API:
 

@@ -12,6 +12,11 @@ https://{$CADDY_SITE_ADDRESS} {
         reverse_proxy backend:8000
     }
 
+    # Grafana — просмотр логов
+    handle /logs* {
+        reverse_proxy grafana:3000
+    }
+
     # Всё остальное → фронтенд
     handle {
         reverse_proxy core-mini-app:80

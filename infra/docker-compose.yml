@@ -93,6 +93,60 @@ services:
     networks:
       - freeman_lab_net
 
+  loki:
+    image: grafana/loki:3.4
+    container_name: freeman_lab_loki
+    restart: unless-stopped
+    volumes:
+      - ./loki/loki.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/config.yml
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3100/ready | grep -q ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - freeman_lab_net
+
+  promtail:
+    image: grafana/promtail:3.4
+    container_name: freeman_lab_promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail/promtail.yml:/etc/promtail/config.yml:ro
+      # Docker socket — для обнаружения контейнеров и чтения их логов
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - freeman_lab_net
+
+  grafana:
+    image: grafana/grafana:11.6
+    container_name: freeman_lab_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/logs/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      loki:
+        condition: service_healthy
+    networks:
+      - freeman_lab_net
+
 networks:
   freeman_lab_net:
     name: freeman_lab_net
@@ -102,3 +156,5 @@ volumes:
   postgres_data:
   rabbitmq_data:
   minio_data:
+  loki_data:
+  grafana_data:
