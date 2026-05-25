@@ -12,7 +12,9 @@ Right now the module is responsible for:
 - `get / list / patch / delete` HTTP operations;
 - updating the linked `UserProfile` from miniapp submit data;
 - publishing an `admin.core_request.created` RabbitMQ notification after a
-  request is created.
+  request is created;
+- notifying `stats_module` about the first submitted core application so that
+  `UserBotStats.core_application_submitted` is updated automatically.
 
 If a change is not about storing a core request, adapting the miniapp contract,
 or notifying downstream consumers about creation, it probably does not belong
@@ -33,6 +35,22 @@ Rule:
 - all standard CRUD operations should go through `CRUD` from `system`;
 - custom service code is appropriate only for domain validation, profile sync,
   and RMQ side effects.
+
+## Dependency On `stats_module`
+
+`core_request_module` calls `stats_module` to update aggregates after
+creating a `CoreRequest`.
+
+Import rule: import only from the specific submodule path
+`app.modules.stats_module.services.user_bot_stats_service` — never from
+`app.modules.stats_module` directly. This avoids any risk of circular imports
+because `stats_module.__init__` triggers loading of
+`stats_module.services.user_bot_stats_service`, which in turn imports
+`core_request_module.models`. Importing through the direct submodule path keeps
+the dependency unambiguous.
+
+The call is **write-only through the service**: `core_request_module` never
+reads from stats tables.
 
 ## What This Module Owns
 
@@ -90,7 +108,9 @@ Important file:
 Expectations:
 
 - `submit_core_form` validates the miniapp payload, finds `TelegramUser`,
-  updates `UserProfile`, creates `CoreRequest`, then publishes an RMQ event;
+  updates `UserProfile`, creates `CoreRequest`, calls
+  `UserBotStatsService.update_core_application_submitted` on the same session,
+  then publishes an RMQ event;
 - `get_core_request`, `list_core_requests`, `patch_core_request`,
   `delete_core_request` use `CRUD`;
 - `publish_core_request_created_to_admin_bot` publishes through
@@ -126,8 +146,10 @@ Expectations:
 2. Resolves `TelegramUser` by `telegram_id`.
 3. Updates `UserProfile`.
 4. Creates `CoreRequest`.
-5. Publishes `admin.core_request.created`.
-6. Returns `CoreRequestRead` with `201 Created`.
+5. Updates `UserBotStats.core_application_submitted` via `UserBotStatsService`
+   (idempotent: only sets the flag on the first submission).
+6. Publishes `admin.core_request.created`.
+7. Returns `CoreRequestRead` with `201 Created`.
 
 ### `GET /api/core`
 

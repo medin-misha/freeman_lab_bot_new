@@ -75,6 +75,12 @@ class UserBotStats(Base, TimestampMixin):
         self.core_application_submitted = submitted
         self.core_application_submitted_at = at if submitted else None
 
+    def increment_diagnostics_total(self) -> None:
+        self.diagnostics_total += 1
+
+    def increment_diagnostics_completed_total(self) -> None:
+        self.diagnostics_completed_total += 1
+
     def set_diagnostics_totals(self, *, diagnostics_total: int, diagnostics_completed_total: int) -> None:
         self.diagnostics_total = diagnostics_total
         self.diagnostics_completed_total = diagnostics_completed_total

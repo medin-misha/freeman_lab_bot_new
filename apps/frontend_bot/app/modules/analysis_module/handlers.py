@@ -28,16 +28,17 @@ from .keyboards import (
     get_public_analysis_keyboard,
     get_public_analysis_schedule_keyboard,
 )
+from .config import MODULE_PREFIX
 from .messages import get_messages
 from .service import AnalysisAuthContextError, AnalysisModuleError, submit_analysis_registration
 
-router = Router(name="analysis_module")
+router = Router(name=MODULE_PREFIX)
 logger = logging.getLogger(__name__)
 _MESSAGES = get_messages()
 
 
 @router.message(F.text.lower() == BOOKING_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-start")
 async def analysis_entrypoint(message: Message) -> None:
     """Показывает вводный экран записи на разбор."""
 
@@ -48,7 +49,7 @@ async def analysis_entrypoint(message: Message) -> None:
 
 
 @router.callback_query(F.data == PUBLIC_ANALYSIS_CALLBACK)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-public")
 async def public_analysis_selected(callback: CallbackQuery) -> None:
     """Отправляет следующий шаг для публичного разбора."""
 
@@ -66,7 +67,7 @@ async def public_analysis_selected(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == PRIVATE_ANALYSIS_CALLBACK)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-private")
 async def private_analysis_selected(callback: CallbackQuery) -> None:
     """Отправляет следующий шаг для приватного разбора."""
 
@@ -84,7 +85,7 @@ async def private_analysis_selected(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == PUBLIC_ANALYSIS_FORM_DONE_CALLBACK)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-public-schedule")
 async def public_analysis_form_done(callback: CallbackQuery) -> None:
     """Переводит пользователя к шагу записи в расписание публичного разбора."""
 
@@ -102,7 +103,7 @@ async def public_analysis_form_done(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == PRIVATE_ANALYSIS_FORM_DONE_CALLBACK)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-private-schedule")
 async def private_analysis_form_done(callback: CallbackQuery) -> None:
     """Переводит пользователя к шагу записи в расписание приватного разбора."""
 
@@ -120,7 +121,7 @@ async def private_analysis_form_done(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == ANALYSIS_SCHEDULE_DONE_CALLBACK)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-done")
 async def analysis_schedule_done(callback: CallbackQuery) -> None:
     """Создаёт запись на разбор после подтверждения шага с расписанием."""
 

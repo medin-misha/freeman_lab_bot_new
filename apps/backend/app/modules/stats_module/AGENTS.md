@@ -105,7 +105,8 @@ Allowed through `PATCH /user/external`:
 
 ## Internal Backend-Driven Fields
 
-Updated through `PATCH /user/internal` and rebuild flows:
+Updated through `PATCH /user/internal`, rebuild flows, **and direct service
+calls from other modules**:
 
 - `core_application_submitted`
 - `core_application_submitted_at`
@@ -114,13 +115,40 @@ Updated through `PATCH /user/internal` and rebuild flows:
 - `last_diagnostic_at`
 - all `UserDiagnosticStats` fields
 
+`core_application_submitted` is also updated automatically when
+`core_request_module` creates a `CoreRequest`: it calls
+`UserBotStatsService.update_core_application_submitted(telegram_user_id, submitted_at)`
+directly on the same DB session, bypassing the HTTP API.
+
+`diagnostics_total`, `diagnostics_completed_total`, and `last_diagnostic_at` are also
+updated automatically by diagnostic modules on the same DB session:
+
+- `base_diagnostic_module`, `default_diagnostic_module`, `invisible_diagnostic_module`
+  call `UserBotStatsService.increment_diagnostics_created(telegram_user_id, at)`
+  when a `DiagnosticRun` is created (`status=CREATED`).
+- `base_diagnostic_module` calls
+  `UserBotStatsService.increment_diagnostics_completed(telegram_user_id, at)`
+  when a `DiagnosticRun` transitions to `status=COMPLETED` (via `complete_run` or
+  `change_status`). The increment fires only on a real status transition, not on
+  idempotent re-completion.
+
+Both methods accept `flush=False` to integrate into the caller's transaction;
+the caller is responsible for the final commit.
+
 Do not add internal fields to external schemas.
 
 ## 6. Rebuild Design
 
 Services:
 
-- `UserBotStatsService.rebuild_for_user(...)`
+- `UserBotStatsService.rebuild_for_user(...)` — full recalculation from source tables
+- `UserBotStatsService.update_core_application_submitted(telegram_user_id, submitted_at)` —
+  idempotent direct update called by `core_request_module`; no-ops if the flag
+  is already set so the first-submission timestamp is preserved
+- `UserBotStatsService.increment_diagnostics_created(telegram_user_id, at, flush)` —
+  increments `diagnostics_total`; called by diagnostic modules on `DiagnosticRun` creation
+- `UserBotStatsService.increment_diagnostics_completed(telegram_user_id, at, flush)` —
+  increments `diagnostics_completed_total`; called by `base_diagnostic_module` on completion
 - `UserDiagnosticStatsService.rebuild_for_user(...)`
 - `StatsRebuildService` for orchestration and batch rebuild
 

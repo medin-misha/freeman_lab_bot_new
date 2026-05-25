@@ -34,6 +34,7 @@ def login_required(
     handler: Handler | None = None,
     *,
     no_cache: bool = False,
+    branch: str | None = None,
 ) -> Handler | Callable[[Handler], Handler]:
     """Пускает хендлер дальше только после успешной backend-аутентификации."""
 
@@ -72,6 +73,18 @@ def login_required(
                 return None
 
             token = set_current_auth_session(session)
+            if branch is not None:
+                try:
+                    # Lazy-импорт для разрыва циклической зависимости:
+                    # stats_module.service → system.client → system.__init__ → system.auth.decorators
+                    from app.modules.stats_module import set_current_user_branch  # noqa: PLC0415
+                    await set_current_user_branch(branch)
+                except Exception:
+                    logger.warning(
+                        "Failed to update current_branch=%r for user %s; continuing.",
+                        branch,
+                        telegram_user.id,
+                    )
             try:
                 return await target_handler(event, *args, **kwargs)
             finally:

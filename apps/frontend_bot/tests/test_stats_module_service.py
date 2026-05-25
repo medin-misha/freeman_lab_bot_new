@@ -115,8 +115,10 @@ class StatsModuleServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_set_current_user_source_sends_patch(self) -> None:
         auth_session = SimpleNamespace(telegram_user=SimpleNamespace(id=42))
+        payload = _build_user_bot_stats_payload(user_id=42)
+        payload["source"] = "ads_campaign"
         backend_client = SimpleNamespace(
-            patch_json=AsyncMock(return_value=_build_user_bot_stats_payload(user_id=42))
+            patch_json=AsyncMock(return_value=payload)
         )
 
         with patch(

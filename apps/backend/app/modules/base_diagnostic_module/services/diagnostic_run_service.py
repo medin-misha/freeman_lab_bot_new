@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from pathlib import Path
 
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.file_module import File
 from app.modules.rmq_module import rmq_publisher
+from app.modules.stats_module.services.user_bot_stats_service import UserBotStatsService
 from app.modules.stats_module.services.user_diagnostic_stats_service import (
     UserDiagnosticStatsService,
 )
@@ -237,6 +238,11 @@ async def create_run(
             diagnostic_code=run.diagnostic_code,
             flush=False,
         )
+        await UserBotStatsService(session).increment_diagnostics_created(
+            telegram_user_id=run.user_id,
+            at=run.created_at,
+            flush=False,
+        )
         await session.commit()
         await session.refresh(run)
     except HTTPException:
@@ -309,7 +315,14 @@ async def change_status(
 
         run.status = normalized_status
         if normalized_status == DiagnosticRunStatus.COMPLETED and run.completed_at is None:
-            run.completed_at = datetime.utcnow()
+            run.completed_at = datetime.now(timezone.utc)
+
+        if normalized_status == DiagnosticRunStatus.COMPLETED:
+            await UserBotStatsService(session).increment_diagnostics_completed(
+                telegram_user_id=run.user_id,
+                at=run.completed_at,
+                flush=False,
+            )
 
         await session.commit()
         await session.refresh(run)
@@ -404,7 +417,14 @@ async def complete_run(
         status_changed = run.status != DiagnosticRunStatus.COMPLETED
         run.status = DiagnosticRunStatus.COMPLETED
         if run.completed_at is None:
-            run.completed_at = datetime.utcnow()
+            run.completed_at = datetime.now(timezone.utc)
+
+        if status_changed:
+            await UserBotStatsService(session).increment_diagnostics_completed(
+                telegram_user_id=run.user_id,
+                at=run.completed_at,
+                flush=False,
+            )
 
         await session.commit()
         await session.refresh(run)

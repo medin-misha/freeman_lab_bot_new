@@ -38,13 +38,15 @@ from app.modules.stats_module import (
 )
 from app.modules.system.auth import login_required
 
-router = Router(name="menu_module")
+from .config import MODULE_PREFIX
+
+router = Router(name=MODULE_PREFIX)
 _MESSAGES = get_messages()
 logger = logging.getLogger(__name__)
 
 
 @router.message(Command("start"))
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-start")
 async def start_command(
     message: Message,
     command: CommandObject | None = None,
@@ -80,7 +82,7 @@ async def start_command(
 
 
 @router.message(F.text == DIAGNOSTICS_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-diagnostic")
 async def diagnostic_menu(message: Message) -> None:
     """Показывает экран меню диагностики."""
 
@@ -88,7 +90,7 @@ async def diagnostic_menu(message: Message) -> None:
 
 
 @router.message(F.text == MORE_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-more")
 async def more_menu(message: Message) -> None:
     """Показывает экран дополнительных возможностей проекта."""
 
@@ -99,7 +101,7 @@ async def more_menu(message: Message) -> None:
 
 
 @router.message(F.text == SOCIALS_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-socials")
 async def socials_menu(message: Message) -> None:
     """Показывает ссылки на соцсети и площадки проекта."""
 
@@ -110,7 +112,7 @@ async def socials_menu(message: Message) -> None:
 
 
 @router.message(F.text == WHY_DIAGNOSTIC_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-why-diagnostic")
 async def explain_diagnostic_value(message: Message) -> None:
     """Повторно отправляет текст с объяснением пользы диагностики."""
 
@@ -118,7 +120,7 @@ async def explain_diagnostic_value(message: Message) -> None:
 
 
 @router.message(F.text == BACK_TO_MENU_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-back")
 async def back_to_main_menu(message: Message, state: FSMContext) -> None:
     """Возвращает пользователя в главное меню."""
 
@@ -127,7 +129,7 @@ async def back_to_main_menu(message: Message, state: FSMContext) -> None:
 
 
 @router.callback_query(lambda callback: callback.data == "menu:check_subscription")
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-check-subscription")
 async def check_subscription_callback(callback: CallbackQuery) -> None:
     """Повторно проверяет подписку после нажатия кнопки подтверждения."""
 
@@ -150,17 +152,30 @@ async def check_subscription_callback(callback: CallbackQuery) -> None:
     await callback.answer(_MESSAGES["subscription_still_missing"], show_alert=True)
 
 
+_DEFAULT_SOURCE = "telegram"
+_SOURCE_PREFIX = "source-"
+
+
 def _extract_start_source(command: CommandObject | None) -> str | None:
-    """Извлекает source из `/start <payload>` и нормализует пустые значения."""
+    """Извлекает source из `/start <payload>`.
+
+    - Нет аргумента → дефолт "telegram" (прямой вход через Telegram)
+    - `source.<value>` → возвращает <value> (tap-to-action с явным источником)
+    - любой другой payload → None (зарезервировано для будущих типов deep link)
+    """
 
     if command is None or command.args is None:
-        return None
+        return _DEFAULT_SOURCE
 
-    source = command.args.strip()
-    if not source:
-        return None
+    payload = command.args.strip()
+    if not payload:
+        return _DEFAULT_SOURCE
 
-    return source
+    if payload.startswith(_SOURCE_PREFIX):
+        value = payload[len(_SOURCE_PREFIX):].strip()
+        return value if value else _DEFAULT_SOURCE
+
+    return None
 
 
 async def _report_channel_subscription(*, chat_id: int) -> None:

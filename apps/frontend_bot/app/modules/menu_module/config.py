@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from app.core import MainSettings, settings
 
 MODULE_DIR = Path(__file__).resolve().parent
+MODULE_PREFIX = "menu"
 
 
 class MenuModuleSettings(BaseModel):

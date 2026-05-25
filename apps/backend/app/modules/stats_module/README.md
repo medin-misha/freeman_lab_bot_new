@@ -275,7 +275,27 @@ Response `200`:
 1. Вызвать `PATCH /api/stats/diagnostic/event` с `completed=true`.
 2. При необходимости обновить user-level totals через `PATCH /api/stats/user/internal`.
 
-## Сценарий C: контрольная сверка
+## Сценарий C: пользователь отправил core-заявку
+
+`core_request_module` вызывает `UserBotStatsService.update_core_application_submitted`
+напрямую после создания `CoreRequest`. Никакого внешнего HTTP-вызова не требуется —
+обновление происходит автоматически в рамках той же сессии. Метод идемпотентен:
+если флаг уже выставлен, он остаётся без изменений (сохраняется время первой подачи).
+
+## Сценарий E: создана или завершена диагностика
+
+`base_diagnostic_module`, `default_diagnostic_module` и `invisible_diagnostic_module`
+вызывают методы `UserBotStatsService` напрямую в рамках той же сессии:
+
+- при создании `DiagnosticRun` → `increment_diagnostics_created(telegram_user_id, at)` —
+  инкрементирует `diagnostics_total` и обновляет `last_diagnostic_at`
+- при успешном завершении `DiagnosticRun` → `increment_diagnostics_completed(telegram_user_id, at)` —
+  инкрементирует `diagnostics_completed_total` и обновляет `last_diagnostic_at`
+
+Оба метода принимают `flush=False`, чтобы не нарушать транзакцию вызывающего кода.
+Коммит остаётся за вызывающим сервисом.
+
+## Сценарий D: контрольная сверка
 
 1. Запустить `POST /api/stats/admin/rebuild/user`.
 2. Сравнить возвращенные агрегаты с ожидаемыми бизнес-метриками.

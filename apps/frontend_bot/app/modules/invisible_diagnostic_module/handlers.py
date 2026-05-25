@@ -23,11 +23,12 @@ from .config import (
     INVISIBLE_DIAGNOSTIC_PREVIEW_FILE_PATH,
     INVISIBLE_DIAGNOSTIC_TRIGGER_TEXT,
     INVISIBLE_DIAGNOSTIC_TYPE,
+    MODULE_PREFIX,
 )
 from .keyboards import get_invisible_diagnostic_reply_keyboard
 from .messages import get_messages
 
-router = Router(name="invisible_diagnostic_module")
+router = Router(name=MODULE_PREFIX)
 _MESSAGES = get_messages()
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class _TelegramFilePayload:
 
 
 @router.message(F.text == INVISIBLE_DIAGNOSTIC_TRIGGER_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-start")
 async def send_invisible_diagnostic_preview(
     message: Message,
     state: FSMContext,
@@ -81,7 +82,7 @@ async def back_to_main_menu(message: Message, state: FSMContext) -> None:
     InvisibleDiagnosticStates.waiting_for_file,
     F.document | F.audio | F.voice,
 )
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-file")
 async def receive_invisible_diagnostic_media(
     message: Message,
     state: FSMContext,
@@ -121,7 +122,7 @@ async def receive_invisible_diagnostic_media(
 
 
 @router.message(InvisibleDiagnosticStates.waiting_for_text, F.text)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-text")
 async def receive_invisible_diagnostic_text(
     message: Message,
     state: FSMContext,

@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.modules.base_diagnostic_module import DiagnosticRun, DiagnosticRunStatus
 from app.modules.base_diagnostic_module.services import publish_run_created_to_admin_bot
 from app.modules.file_module import File
+from app.modules.stats_module.services.user_bot_stats_service import UserBotStatsService
 from app.modules.stats_module.services.user_diagnostic_stats_service import (
     UserDiagnosticStatsService,
 )
@@ -67,6 +68,11 @@ async def create_invisible_diagnostic(
         await UserDiagnosticStatsService(session).ensure_for_user_and_diagnostic(
             telegram_user_id=run.user_id,
             diagnostic_code=run.diagnostic_code,
+            flush=False,
+        )
+        await UserBotStatsService(session).increment_diagnostics_created(
+            telegram_user_id=run.user_id,
+            at=run.created_at,
             flush=False,
         )
 

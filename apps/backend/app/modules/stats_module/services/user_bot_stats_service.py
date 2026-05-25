@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.base_diagnostic_module.models import DiagnosticRun, DiagnosticRunStatus
-from app.modules.core_request_module.models import CoreRequest
 from app.modules.telegram_module import TelegramUser
 from app.modules.system.services.errors import DBErrorHandler
+
+if TYPE_CHECKING:
+    from app.modules.base_diagnostic_module.models import DiagnosticRun
+    from app.modules.core_request_module.models import CoreRequest
 
 from ..models import UserBotStats
 from ..schemas import UserBotStatsExternalUpdate, UserBotStatsInternalUpdate
@@ -180,6 +183,75 @@ class UserBotStatsService:
         await self._flush_and_commit()
         return stats
 
+    async def update_core_application_submitted(
+        self,
+        *,
+        telegram_user_id: int,
+        submitted_at: datetime,
+    ) -> None:
+        """Отмечает первую подачу core-заявки для пользователя.
+
+        Принимает внутренний DB id пользователя (не telegram_id).
+        Если флаг уже выставлен — ничего не делает, чтобы сохранить
+        дату первой заявки (согласованно с логикой rebuild).
+        """
+        stats = await self._get_by_telegram_user_id(telegram_user_id)
+        if stats is None:
+            stats = UserBotStats(**_build_user_bot_stats_insert_values(telegram_user_id))
+            self.session.add(stats)
+            await self.session.flush()
+        if not stats.core_application_submitted:
+            stats.mark_core_application_submitted(submitted=True, at=submitted_at)
+            await self._flush_and_commit()
+
+    async def increment_diagnostics_created(
+        self,
+        *,
+        telegram_user_id: int,
+        at: datetime,
+        flush: bool = True,
+    ) -> None:
+        """Вызывается при создании DiagnosticRun: инкрементирует diagnostics_total.
+
+        Принимает внутренний DB id пользователя (не telegram_id).
+        Создаёт запись UserBotStats, если её ещё нет.
+        flush=False позволяет вызывать внутри уже открытой транзакции — коммит
+        делает вызывающий код.
+        """
+        stats = await self._get_by_telegram_user_id(telegram_user_id)
+        if stats is None:
+            stats = UserBotStats(**_build_user_bot_stats_insert_values(telegram_user_id))
+            self.session.add(stats)
+            await self.session.flush()
+        stats.increment_diagnostics_total()
+        stats.set_last_diagnostic_at(self._max_dt(stats.last_diagnostic_at, at))
+        if flush:
+            await self.session.flush()
+
+    async def increment_diagnostics_completed(
+        self,
+        *,
+        telegram_user_id: int,
+        at: datetime,
+        flush: bool = True,
+    ) -> None:
+        """Вызывается при завершении DiagnosticRun: инкрементирует diagnostics_completed_total.
+
+        Принимает внутренний DB id пользователя (не telegram_id).
+        Создаёт запись UserBotStats, если её ещё нет.
+        flush=False позволяет вызывать внутри уже открытой транзакции — коммит
+        делает вызывающий код.
+        """
+        stats = await self._get_by_telegram_user_id(telegram_user_id)
+        if stats is None:
+            stats = UserBotStats(**_build_user_bot_stats_insert_values(telegram_user_id))
+            self.session.add(stats)
+            await self.session.flush()
+        stats.increment_diagnostics_completed_total()
+        stats.set_last_diagnostic_at(self._max_dt(stats.last_diagnostic_at, at))
+        if flush:
+            await self.session.flush()
+
     async def rebuild_for_user(
         self,
         *,
@@ -198,6 +270,8 @@ class UserBotStatsService:
             submitted=core_application_submitted,
             at=core_application_submitted_at,
         )
+
+        from app.modules.base_diagnostic_module.models import DiagnosticRunStatus
 
         diagnostic_runs = await self._list_diagnostic_runs(user.id)
         diagnostics_total = len(diagnostic_runs)
@@ -295,12 +369,16 @@ class UserBotStatsService:
         await self.session.commit()
 
     async def _list_core_requests(self, telegram_user_id: int) -> list[CoreRequest]:
+        from app.modules.core_request_module.models import CoreRequest
+
         result = await self.session.execute(
             select(CoreRequest).where(CoreRequest.user_id == telegram_user_id)
         )
         return list(result.scalars().all())
 
     async def _list_diagnostic_runs(self, telegram_user_id: int) -> list[DiagnosticRun]:
+        from app.modules.base_diagnostic_module.models import DiagnosticRun
+
         result = await self.session.execute(
             select(DiagnosticRun).where(DiagnosticRun.user_id == telegram_user_id)
         )

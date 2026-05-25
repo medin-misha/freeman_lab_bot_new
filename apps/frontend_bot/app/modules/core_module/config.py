@@ -25,3 +25,5 @@ def build_core_settings(main_settings: MainSettings = settings) -> CoreModuleSet
 
 
 core_settings = build_core_settings()
+
+MODULE_PREFIX = "core"

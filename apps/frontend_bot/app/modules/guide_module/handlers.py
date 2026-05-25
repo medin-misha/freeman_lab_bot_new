@@ -7,7 +7,7 @@ import logging
 from aiogram import F, Router
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
-from app.modules.guide_module.config import GUIDE_PDF_PATH, GUIDE_VIDEO_PATH
+from app.modules.guide_module.config import GUIDE_PDF_PATH, GUIDE_VIDEO_PATH, MODULE_PREFIX
 from app.modules.guide_module.messages import get_messages
 from app.modules.menu_module.keyboards import GUIDE_BUTTON_TEXT
 from app.modules.stats_module import (
@@ -16,7 +16,7 @@ from app.modules.stats_module import (
 )
 from app.modules.system.auth import login_required
 
-router = Router(name="guide_module")
+router = Router(name=MODULE_PREFIX)
 _MESSAGES = get_messages()
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ async def _do_send_guide(target: Message) -> None:
 
 
 @router.callback_query(F.data == "menu:guide")
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-send")
 async def send_guide_callback(callback: CallbackQuery) -> None:
     """Отправляет методичку по нажатию inline-кнопки."""
 
@@ -52,7 +52,7 @@ async def send_guide_callback(callback: CallbackQuery) -> None:
 
 
 @router.message(F.text == GUIDE_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-send")
 async def send_guide_message(message: Message) -> None:
     """Отправляет методичку по нажатию reply-кнопки."""
 

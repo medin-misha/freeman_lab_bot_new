@@ -9,7 +9,9 @@
 - совместимый с legacy miniapp submit endpoint `POST /api/core/submit`;
 - чтение, список, patch и удаление заявок через HTTP API;
 - обновление `UserProfile` по данным формы при submit;
-- отправку RMQ-уведомления в `admin_bot` при создании заявки.
+- отправку RMQ-уведомления в `admin_bot` при создании заявки;
+- автоматическое обновление `UserBotStats.core_application_submitted` через
+  `stats_module` при первой отправке заявки.
 
 Модуль построен поверх `app.modules.system` и переиспользует его общий
 CRUD-слой вместо локального дублирования запросов.
@@ -40,7 +42,15 @@ core_request_module/
 - `Base` и `TimestampMixin` из `app.modules.system` для ORM-модели;
 - `CRUD` из `app.modules.system` для `create / get / list / patch / delete`;
 - `TelegramUser` и `UserProfile` из `app.modules.telegram_module`;
-- `rmq_publisher` из `app.modules.rmq_module` для уведомления `admin_bot`.
+- `rmq_publisher` из `app.modules.rmq_module` для уведомления `admin_bot`;
+- `UserBotStatsService` из `app.modules.stats_module.services.user_bot_stats_service`
+  для обновления агрегата после создания заявки.
+
+Импорт из `stats_module` ведётся напрямую через submodule-путь (не через
+`app.modules.stats_module`), чтобы исключить риск циклического импорта:
+`stats_module.__init__` транзитивно загружает `core_request_module.models`,
+поэтому использование `__init__`-пути из `core_request_module.services` создало
+бы цикл.
 
 ## Основная модель
 
@@ -95,6 +105,9 @@ core_request_module/
 - поиск `TelegramUser` по `telegram_id`;
 - обновление `UserProfile` при submit;
 - создание заявки через `CRUD.create()`;
+- обновление `UserBotStats.core_application_submitted` через
+  `UserBotStatsService.update_core_application_submitted` (идемпотентно —
+  устанавливает флаг только при первой подаче);
 - публикацию RMQ-события после успешного создания;
 - стандартные `get / list / patch / delete` сценарии через `CRUD`.
 
@@ -128,8 +141,10 @@ Router объявлен в [handlers.py](handlers.py) с префиксом `/co
 1. ищет `TelegramUser` по `telegram_id`;
 2. обновляет `UserProfile` значениями `full_name`, `birth_date`, `city`;
 3. создаёт заявку через `CRUD.create()`;
-4. публикует RMQ-уведомление в `admin_bot`;
-5. возвращает `CoreRequestRead` со статусом `201 Created`.
+4. помечает `UserBotStats.core_application_submitted = True` через
+   `UserBotStatsService` (идемпотентно: только если флаг ещё не выставлен);
+5. публикует RMQ-уведомление в `admin_bot`;
+6. возвращает `CoreRequestRead` со статусом `201 Created`.
 
 ### `GET /api/core`
 

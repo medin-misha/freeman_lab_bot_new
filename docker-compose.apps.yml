@@ -64,6 +64,17 @@ services:
     networks:
       - freeman_lab_net
 
+  admin-mini-app:
+    build:
+      context: ./apps/admin-mini-app
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${CORE_MINI_APP_API_URL:-/api}
+    container_name: freeman_lab_admin_mini_app
+    restart: unless-stopped
+    networks:
+      - freeman_lab_net
+
   frontend-bot:
     build:
       context: ./apps/frontend_bot

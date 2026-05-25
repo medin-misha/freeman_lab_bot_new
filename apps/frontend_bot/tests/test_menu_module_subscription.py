@@ -90,19 +90,33 @@ class SubscriptionServiceTests(unittest.IsolatedAsyncioTestCase):
 
 
 class StartSourceHelpersTests(unittest.TestCase):
-    def test_extract_start_source_returns_trimmed_payload(self) -> None:
-        command = SimpleNamespace(args="  instagram  ")
+    def test_extract_start_source_returns_default_for_missing_payload(self) -> None:
+        # Нет аргумента → дефолт "telegram"
+        self.assertEqual(_extract_start_source(None), "telegram")
+        self.assertEqual(_extract_start_source(SimpleNamespace(args=None)), "telegram")
+        self.assertEqual(_extract_start_source(SimpleNamespace(args="   ")), "telegram")
 
-        self.assertEqual(_extract_start_source(command), "instagram")
+    def test_extract_start_source_parses_source_prefix(self) -> None:
+        # source-<value> → возвращает <value>
+        self.assertEqual(_extract_start_source(SimpleNamespace(args="source-instagram")), "instagram")
+        self.assertEqual(_extract_start_source(SimpleNamespace(args="source-youtube")), "youtube")
 
-    def test_extract_start_source_returns_none_for_missing_payload(self) -> None:
-        self.assertIsNone(_extract_start_source(None))
-        self.assertIsNone(_extract_start_source(SimpleNamespace(args=None)))
-        self.assertIsNone(_extract_start_source(SimpleNamespace(args="   ")))
+    def test_extract_start_source_trims_whitespace_around_source_value(self) -> None:
+        self.assertEqual(_extract_start_source(SimpleNamespace(args="  source-youtube  ")), "youtube")
+
+    def test_extract_start_source_returns_default_for_empty_source_prefix(self) -> None:
+        # source- без значения после → дефолт "telegram"
+        self.assertEqual(_extract_start_source(SimpleNamespace(args="source-")), "telegram")
+        self.assertEqual(_extract_start_source(SimpleNamespace(args="source-  ")), "telegram")
+
+    def test_extract_start_source_returns_none_for_unknown_payload(self) -> None:
+        # payload без префикса source- → None (зарезервировано для других типов deep link)
+        self.assertIsNone(_extract_start_source(SimpleNamespace(args="some_referral")))
+        self.assertIsNone(_extract_start_source(SimpleNamespace(args="instagram")))
 
 
 class StartCommandTests(unittest.IsolatedAsyncioTestCase):
-    async def test_start_command_reports_source_and_preserves_existing_flow(self) -> None:
+    async def test_start_command_reports_source_prefix_and_preserves_existing_flow(self) -> None:
         message = SimpleNamespace(
             from_user=SimpleNamespace(id=1),
             bot=object(),
@@ -122,11 +136,58 @@ class StartCommandTests(unittest.IsolatedAsyncioTestCase):
         ) as send_main_menu:
             await start_command.__wrapped__(
                 message,
-                command=SimpleNamespace(args="ads_campaign"),
+                command=SimpleNamespace(args="source-ads_campaign"),
             )
 
         set_source.assert_awaited_once_with("ads_campaign")
         send_main_menu.assert_awaited_once_with(message)
+
+    async def test_start_command_reports_default_source_when_no_payload(self) -> None:
+        message = SimpleNamespace(
+            from_user=SimpleNamespace(id=1),
+            bot=object(),
+            chat=SimpleNamespace(id=100),
+            answer=unittest.mock.AsyncMock(),
+        )
+
+        with patch(
+            "app.modules.menu_module.handlers.set_current_user_source",
+            new=unittest.mock.AsyncMock(),
+        ) as set_source, patch(
+            "app.modules.menu_module.handlers.is_user_subscribed",
+            new=unittest.mock.AsyncMock(return_value=True),
+        ), patch(
+            "app.modules.menu_module.handlers.send_main_menu",
+            new=unittest.mock.AsyncMock(),
+        ):
+            await start_command.__wrapped__(message, command=None)
+
+        set_source.assert_awaited_once_with("telegram")
+
+    async def test_start_command_does_not_set_source_for_unknown_payload(self) -> None:
+        message = SimpleNamespace(
+            from_user=SimpleNamespace(id=1),
+            bot=object(),
+            chat=SimpleNamespace(id=100),
+            answer=unittest.mock.AsyncMock(),
+        )
+
+        with patch(
+            "app.modules.menu_module.handlers.set_current_user_source",
+            new=unittest.mock.AsyncMock(),
+        ) as set_source, patch(
+            "app.modules.menu_module.handlers.is_user_subscribed",
+            new=unittest.mock.AsyncMock(return_value=True),
+        ), patch(
+            "app.modules.menu_module.handlers.send_main_menu",
+            new=unittest.mock.AsyncMock(),
+        ):
+            await start_command.__wrapped__(
+                message,
+                command=SimpleNamespace(args="unknown_referral"),
+            )
+
+        set_source.assert_not_awaited()
 
     async def test_start_command_reports_channel_subscription_for_subscribed_user(self) -> None:
         message = SimpleNamespace(
@@ -193,7 +254,7 @@ class StartCommandTests(unittest.IsolatedAsyncioTestCase):
         ) as send_subscription_prompt:
             await start_command.__wrapped__(
                 message,
-                command=SimpleNamespace(args="ads_campaign"),
+                command=SimpleNamespace(args="source-ads_campaign"),
             )
 
         send_subscription_prompt.assert_awaited_once_with(message)

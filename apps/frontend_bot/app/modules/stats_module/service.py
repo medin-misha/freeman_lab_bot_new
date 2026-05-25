@@ -61,6 +61,13 @@ class FrontendStatsClient:
             UserBotStatsExternalUpdate(source=source)
         )
 
+    async def set_branch(self, branch: str) -> UserBotStatsRead:
+        """Сохраняет current_branch пользователя."""
+
+        return await self.update_user_external_stats(
+            UserBotStatsExternalUpdate(current_branch=branch)
+        )
+
     async def apply_diagnostic_event(
         self,
         data: UserDiagnosticStatsEventUpdate,
@@ -117,6 +124,12 @@ async def set_current_user_source(source: str) -> UserBotStatsRead:
     """Удобный helper для фиксации source текущего пользователя."""
 
     return await get_stats_client().set_source(source)
+
+
+async def set_current_user_branch(branch: str) -> UserBotStatsRead:
+    """Удобный helper для обновления current_branch текущего пользователя."""
+
+    return await get_stats_client().set_branch(branch)
 
 
 async def mark_current_user_channel_subscribed() -> UserBotStatsRead:

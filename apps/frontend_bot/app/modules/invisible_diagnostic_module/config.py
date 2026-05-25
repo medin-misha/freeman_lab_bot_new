@@ -14,3 +14,5 @@ INVISIBLE_DIAGNOSTIC_TYPE = "invisible"
 INVISIBLE_DIAGNOSTIC_PREVIEW_FILE_PATH: Path = (
     FILES_DIR / "Инструкция_Диагностика_невидимости.pdf"
 )
+
+MODULE_PREFIX = "invisible-diag"

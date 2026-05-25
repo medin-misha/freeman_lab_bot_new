@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.rmq_module import rmq_publisher
+from app.modules.stats_module.services.user_bot_stats_service import UserBotStatsService
 from app.modules.system import CRUD
 from app.modules.telegram_module import TelegramUser, UserProfile
 from app.modules.telegram_module.schemas import UserProfilePatch
@@ -175,6 +176,11 @@ async def submit_core_form(
         ),
         model=CoreRequest,
         session=session,
+    )
+
+    await UserBotStatsService(session).update_core_application_submitted(
+        telegram_user_id=telegram_user.id,
+        submitted_at=core_request.created_at,
     )
 
     await publish_core_request_created_to_admin_bot(

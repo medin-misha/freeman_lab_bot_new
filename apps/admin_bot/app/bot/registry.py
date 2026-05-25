@@ -7,6 +7,7 @@
 
 from aiogram import Dispatcher
 
+from app.modules.admin_panel_module import router as admin_panel_router
 from app.modules.analysis_admin_module import router as analysis_admin_router
 from app.modules.core_admin_module import router as core_admin_router
 from app.modules.diagnostic_admin_module import router as diagnostic_admin_router
@@ -24,3 +25,4 @@ def register_routers(dispatcher: Dispatcher) -> None:
     dispatcher.include_router(diagnostic_admin_router)
     dispatcher.include_router(product_router)
     dispatcher.include_router(rmq_router)
+    dispatcher.include_router(admin_panel_router)

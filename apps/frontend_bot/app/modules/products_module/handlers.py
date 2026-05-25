@@ -21,6 +21,7 @@ from .keyboards import (
     get_product_details_reply_keyboard,
     get_products_menu_reply_keyboard,
 )
+from .config import MODULE_PREFIX
 from .messages import get_messages
 from .service import (
     ProductRequestDefinition,
@@ -29,7 +30,7 @@ from .service import (
     submit_product_request,
 )
 
-router = Router(name="products_module")
+router = Router(name=MODULE_PREFIX)
 logger = logging.getLogger(__name__)
 _MESSAGES = get_messages()
 
@@ -48,7 +49,7 @@ class ProductStates(StatesGroup):
 
 
 @router.message(F.text == SERVICES_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-menu")
 async def products_menu(message: Message, state: FSMContext) -> None:
     """Показывает меню услуг."""
 
@@ -60,7 +61,7 @@ async def products_menu(message: Message, state: FSMContext) -> None:
 
 
 @router.message(F.text == CONSULTATIONS_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-consultation")
 async def consultation_details(message: Message, state: FSMContext) -> None:
     """Показывает описание консультаций."""
 
@@ -72,7 +73,7 @@ async def consultation_details(message: Message, state: FSMContext) -> None:
 
 
 @router.message(F.text == REGRESSIONS_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-regression")
 async def regression_details(message: Message, state: FSMContext) -> None:
     """Показывает описание регрессий."""
 
@@ -84,7 +85,7 @@ async def regression_details(message: Message, state: FSMContext) -> None:
 
 
 @router.message(F.text == MENTORING_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-mentoring")
 async def mentoring_details(message: Message, state: FSMContext) -> None:
     """Показывает описание наставничества."""
 
@@ -96,7 +97,7 @@ async def mentoring_details(message: Message, state: FSMContext) -> None:
 
 
 @router.message(F.text == BACK_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-back")
 async def back_to_products_menu(message: Message, state: FSMContext) -> None:
     """Возвращает пользователя в меню услуг."""
 
@@ -108,7 +109,7 @@ async def back_to_products_menu(message: Message, state: FSMContext) -> None:
 
 
 @router.message(F.text == LEAVE_REQUEST_BUTTON_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-request")
 async def leave_product_request(message: Message, state: FSMContext) -> None:
     """Оформляет заявку по текущей выбранной услуге."""
 

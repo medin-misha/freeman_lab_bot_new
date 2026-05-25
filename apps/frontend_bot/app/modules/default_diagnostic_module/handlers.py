@@ -25,11 +25,12 @@ from .config import (
     DEFAULT_DIAGNOSTIC_PREVIEW_FILE_PATH,
     DEFAULT_DIAGNOSTIC_TRIGGER_TEXT,
     DEFAULT_DIAGNOSTIC_TYPE,
+    MODULE_PREFIX,
 )
 from .keyboards import get_default_diagnostic_reply_keyboard
 from .messages import get_messages
 
-router = Router(name="default_diagnostic_module")
+router = Router(name=MODULE_PREFIX)
 _MESSAGES = get_messages()
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class _TelegramFilePayload:
 
 
 @router.message(F.text == DEFAULT_DIAGNOSTIC_TRIGGER_TEXT)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-start")
 async def send_default_diagnostic_preview(
     message: Message,
     state: FSMContext,
@@ -83,7 +84,7 @@ async def back_to_main_menu(message: Message, state: FSMContext) -> None:
     DefaultDiagnosticStates.waiting_for_file,
     F.document | F.audio | F.voice,
 )
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-file")
 async def receive_default_diagnostic_media(
     message: Message,
     state: FSMContext,
@@ -123,7 +124,7 @@ async def receive_default_diagnostic_media(
 
 
 @router.message(DefaultDiagnosticStates.waiting_for_text, F.text)
-@login_required
+@login_required(branch=f"{MODULE_PREFIX}-text")
 async def receive_default_diagnostic_text(
     message: Message,
     state: FSMContext,

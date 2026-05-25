@@ -14,6 +14,7 @@ from .service import (
     get_stats_client,
     mark_current_user_channel_subscribed,
     mark_current_user_received_methodology,
+    set_current_user_branch,
     set_current_user_source,
 )
 
@@ -28,6 +29,7 @@ __all__ = [
     "get_stats_client",
     "mark_current_user_channel_subscribed",
     "mark_current_user_received_methodology",
+    "set_current_user_branch",
     "set_current_user_source",
     "router",
 ]

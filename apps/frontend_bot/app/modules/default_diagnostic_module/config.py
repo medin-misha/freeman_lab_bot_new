@@ -14,3 +14,5 @@ DEFAULT_DIAGNOSTIC_TYPE = "default"
 DEFAULT_DIAGNOSTIC_PREVIEW_FILE_PATH: Path = (
     FILES_DIR / "Инструкция_Базовая_Диагнстика.pdf"
 )
+
+MODULE_PREFIX = "default-diag"

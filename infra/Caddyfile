@@ -17,6 +17,11 @@ https://{$CADDY_SITE_ADDRESS} {
         reverse_proxy grafana:3000
     }
 
+    # Админ-панель
+    handle /admin* {
+        reverse_proxy admin-mini-app:80
+    }
+
     # Всё остальное → фронтенд
     handle {
         reverse_proxy core-mini-app:80

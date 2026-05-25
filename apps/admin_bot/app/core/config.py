@@ -107,6 +107,10 @@ class MainSettings(BaseSettings):
         default="",
         validation_alias=AliasChoices("ADMINS_CHAT_IDS", "admins_chat_ids"),
     )
+    admin_url: str = Field(
+        default="http://localhost/admin/",
+        validation_alias=AliasChoices("ADMIN_URL", "admin_url"),
+    )
 
     @property
     def bot_token(self) -> str:
