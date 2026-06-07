@@ -47,6 +47,10 @@ class DiagnosticRunServiceTests(unittest.IsolatedAsyncioTestCase):
                 AsyncMock(),
             ) as ensure_stats,
             patch(
+                "app.modules.base_diagnostic_module.services.diagnostic_run_service.UserBotStatsService.increment_diagnostics_created",
+                AsyncMock(),
+            ) as increment_stats,
+            patch(
                 "app.modules.base_diagnostic_module.services.diagnostic_run_service._publish_run_event",
                 AsyncMock(),
             ),
@@ -75,6 +79,11 @@ class DiagnosticRunServiceTests(unittest.IsolatedAsyncioTestCase):
         ensure_stats.assert_awaited_once_with(
             telegram_user_id=17,
             diagnostic_code="default",
+            flush=False,
+        )
+        increment_stats.assert_awaited_once_with(
+            telegram_user_id=17,
+            at=run.created_at,
             flush=False,
         )
 

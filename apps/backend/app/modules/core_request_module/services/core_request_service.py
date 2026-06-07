@@ -10,7 +10,7 @@ from app.modules.rmq_module import rmq_publisher
 from app.modules.stats_module.services.user_bot_stats_service import UserBotStatsService
 from app.modules.system import CRUD
 from app.modules.telegram_module import TelegramUser, UserProfile
-from app.modules.telegram_module.schemas import UserProfilePatch
+from app.modules.telegram_module.schemas.user_profile import UserProfilePatch
 
 from ..models import CoreRequest
 from ..schemas import (
