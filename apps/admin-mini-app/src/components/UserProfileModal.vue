@@ -109,15 +109,30 @@ function triggerNotification(msg) {
 }
 
 function playVoice(diagCode) {
-  triggerNotification(`🔊 Прослушивание голосового ответа для диагностики ${diagCode}...`)
+  const diag = props.user.diagnostics?.find(d => d.code === diagCode)
+  if (diag && diag.voice) {
+    window.open(diag.voice, '_blank')
+  } else {
+    triggerNotification(`🔊 Прослушивание голосового ответа для диагностики ${diagCode}...`)
+  }
 }
 
 function downloadReport(diagCode) {
-  triggerNotification(`📥 Скачивание PDF-отчета для диагностики ${diagCode}...`)
+  const diag = props.user.diagnostics?.find(d => d.code === diagCode)
+  if (diag && diag.report) {
+    window.open(diag.report, '_blank')
+  } else {
+    triggerNotification(`📥 Скачивание PDF-отчета для диагностики ${diagCode}...`)
+  }
 }
 
 function viewTranscript(diagCode) {
-  triggerNotification(`📄 Открытие транскрибации для диагностики ${diagCode}...`)
+  const diag = props.user.diagnostics?.find(d => d.code === diagCode)
+  if (diag && diag.transcript) {
+    window.open(diag.transcript, '_blank')
+  } else {
+    triggerNotification(`📄 Открытие транскрибации для диагностики ${diagCode}...`)
+  }
 }
 </script>
 

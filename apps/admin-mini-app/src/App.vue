@@ -19,6 +19,7 @@ import {
 import { initialUsers, initialBroadcasts } from './mockData.js'
 
 // Import components
+import { saveUser } from './services/api.js'
 import DashboardStats from './components/DashboardStats.vue'
 import UserList from './components/UserList.vue'
 import UserProfileModal from './components/UserProfileModal.vue'
@@ -90,11 +91,18 @@ function selectUser(user) {
   isProfileOpen.value = true
 }
 
-function handleSaveUser(updatedUser) {
-  const index = users.value.findIndex(u => u.id === updatedUser.id)
-  if (index !== -1) {
-    users.value[index] = updatedUser
-    localStorage.setItem('pml_admin_users', JSON.stringify(users.value))
+async function handleSaveUser(updatedUser) {
+  try {
+    const saved = await saveUser(updatedUser)
+    const index = users.value.findIndex(u => u.id === saved.id)
+    if (index !== -1) {
+      users.value[index] = saved
+    }
+    selectedUser.value = saved
+    triggerToast(`Профиль пользователя ${saved.full_name} успешно сохранен!`)
+  } catch (error) {
+    console.error('Ошибка при сохранении пользователя:', error)
+    triggerToast('Не удалось сохранить изменения пользователя.')
   }
 }
 
