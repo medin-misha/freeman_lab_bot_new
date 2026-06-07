@@ -3,6 +3,10 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
 from .user_profile import UserProfileRead
+from app.modules.stats_module.schemas.user_bot_stats import UserBotStatsRead
+from app.modules.base_diagnostic_module.schemas.diagnostic_run import DiagnosticRunRead
+from app.modules.core_request_module.schemas.core_request import CoreRequestRead
+
 
 class TelegramUserBase(BaseModel):
     telegram_id: int
@@ -34,3 +38,7 @@ class TelegramUserRead(TelegramUserBase):
     created_at: datetime
     updated_at: datetime
     user_profile: UserProfileRead | None = None
+    bot_stats: UserBotStatsRead | None = None
+    diagnostic_runs: list[DiagnosticRunRead] = []
+    core_request: CoreRequestRead | None = None
+

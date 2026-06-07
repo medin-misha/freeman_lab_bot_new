@@ -8,6 +8,9 @@ from app.modules import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from .user_profile import UserProfile
+    from app.modules.stats_module.models.user_bot_stats import UserBotStats
+    from app.modules.base_diagnostic_module.models.diagnostic_run import DiagnosticRun
+    from app.modules.core_request_module.models.core_request import CoreRequest
 
 
 class TelegramUser(Base, TimestampMixin):
@@ -22,3 +25,18 @@ class TelegramUser(Base, TimestampMixin):
         lazy="selectin",
         passive_deletes="all",
     )
+    bot_stats: Mapped["UserBotStats | None"] = relationship(
+        uselist=False,
+        lazy="selectin",
+        foreign_keys="[UserBotStats.telegram_user_id]",
+    )
+    diagnostic_runs: Mapped[list["DiagnosticRun"]] = relationship(
+        lazy="selectin",
+        foreign_keys="[DiagnosticRun.user_id]",
+    )
+    core_request: Mapped["CoreRequest | None"] = relationship(
+        uselist=False,
+        lazy="selectin",
+        foreign_keys="[CoreRequest.user_id]",
+    )
+
